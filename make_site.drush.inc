@@ -23,16 +23,20 @@ function make_site_drush_command() {
     'arguments' => array(
       'config' => 'path/to/make-site.config.inc',
     ),
-    /*
     'options' => array(
-      'key' => array(
-        'description' => '',
-        'example-value' => '',
+      'show-info' => array(
+        'description' => 'Print $info array from combined make files. (Helpful for development.)',
+      ),
+      'show-config' => array(
+        'description' => 'Print $config array from mysite.config.inc. (Helpful for development.)',
+      ),
+      'simulate' => array(
+        'description' => 'Output commands to be executed for examination, but do not actually execute them.',
       ),
     ),
-    // */
     'examples' => array(
       'drush make-site mysite.config.inc' => '',
+      'drush mks mysite.config.inc --show-info' => '',
     ),
     'aliases' => array('mks'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH, // No bootstrap at all.
@@ -60,30 +64,360 @@ function make_site_drush_help($section) {
 /**
  * Implementation of drush_hook_COMMAND_validate().
  */
-function drush_make_site_validate() {
+function drush_make_site_validate($config_file) {
   $is_valid = TRUE;
 
+  // TODO This command must be run from top-level of git repo.
   // TODO Confirm we're in a git repo.
+  // cd "$(git rev-parse --show-toplevel)"
+
+  // Confirm we have a config file.
+  $is_valid = (file_exists($config_file)) ? TRUE : drush_set_error('make_site', dt('Could not find config file, !here'), array('!here' => $config_file));
+
   // TODO Confirm config points to a make file.
+  // TODO Check code base for make files. See if they're all being included in build. If not, notify user. Ask if we should proceed or not.
+
+  // Helper stuff.
   // TODO Check for subtrees. Give user message if not using.
   // TODO Check for commands to shell_exec. Give user message if not using.
 
-  if (!$is_valid) {
-    // TODO Improve error message here.
-    return drush_set_error('make_site', dt('Validation failed.'));
-  }
+  return $is_valid;
 }
 
 /**
  * Callback for make-site command.
  *
+ * @param string $config_file
+ *  path/to/config/file providing $config info
+ *
  * @see drush_invoke()
  * @see drush.api.php
  */
-function drush_make_site() {
-  // TODO Load config.
-  // TODO Load and parse make file(s).
-  // TODO Drush make.
-  // TODO Set up subtrees.
-  // TODO Execute custom commands.
+function drush_make_site($config_file) {
+  // Load config file, providing $conf variable.
+  $config = _make_site_get_config($config_file);
+
+  // Get variables from $config;
+  $build_file = $config['build_file'];
+
+  // Assemble $info array by loading, parsing and merging make file(s).
+  $info = _make_site_get_info($build_file);
+
+  // If requested, output full build info.
+  if (drush_get_option('show-info')) {
+    drush_print('$info:');
+    drush_print(print_r($info));
+  }
+
+  // Build up $commands list to be executed...
+  $commands = array();
+
+  // If target director already exists, remove it.
+  $target = $config['target'];
+  if (file_exists($target)) {
+    $commands[] = "rm -r $target";
+  }
+  
+  // Drush make.
+  $commands[] = "drush make {$build_file} {$target} --no-recursion --no-gitinfofile";
+
+  // Set up subtrees.
+  foreach ($config['subtrees'] as $subtree_name => $details) {
+    // Add git subtree if it doesn't already exist.
+    if($add_subtree =  _make_site_subtree_add($subtree_name, $details)) {
+      $commands[] = $add_subtree;
+    }
+
+    // Pull in newest updates from subtree's external repo.
+    $commands[] = _make_site_subtree_pull($subtree_name, $details);
+
+    // Checkout tagged version of project specified in make file.
+    if ($tag = _make_site_get_tag($subtree_name, $info)) {
+      $commands[] = _make_site_subtree_merge($subtree_name, $tag);
+    }
+    else {
+      // @todo Detect latest recommended release on d.o when no version is specified. Consider checking that out to better match standard make file behavior?
+      drush_log(dt("No version specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
+    }
+
+    // Remove files checked out by drush. (To be replaced with a symlink.)
+    $path = $details['path'];
+    $commands[] = "rm -r {$path}";
+
+    // Add symlink pointing to your local subtree.
+    $commands[] = _make_site_subtree_add_symlink($subtree_name, $path);
+  }
+
+  // Add custom commands.
+  foreach ($config['commands'] as $command) {
+    $commands[] = $command;
+  }
+
+  // Execute commands.
+  foreach ($commands as $command) {
+    drush_shell_exec($command);
+  }
+}
+
+/**
+ * Load config from config file by calling make_site_config().
+ *
+ * TODO Consider whether it's better to get make the config file a drupaly info
+ * file versus requiring people to implement a special function make_site_config().
+ *
+ * @return array $config
+ */
+function _make_site_get_config($config_file) {
+  if (file_exists($config_file)) {
+    include_once $config_file;
+  }
+  else {
+    return drush_set_error('make_site', dt('Config file does not exist: !here.', array('!here' => $config_file)));
+  }
+
+  if (function_exists('make_site_config')) {
+    $config = make_site_config();
+  }
+  else {
+    return drush_set_error('make_site', dt('Config file does not include function make_site_config(): !here.', array('!here' => $config_file)));
+  }
+
+  // If requested, output loaded config
+  if (drush_get_option('show-config')) {
+    drush_print('$config:');
+    drush_print(print_r($config));
+  }
+
+  return $config;
+}
+
+/**
+ * Parse make/info files.
+ *
+ * @return array $info
+ *  Assemble $info array by loading, parsing and merging make file(s).
+ */
+function _make_site_get_info($file) {
+  // Load $info from info/make file if it exists.
+  if (file_exists($file)) {
+    $info = make_parse_info_file($file);  
+  }
+  else {
+    return drush_set_error('make_site', dt('Make file does not exist: !here.', array('!here' => $file)));
+  }
+
+  // Check for included make files. If they exist, recurse.
+  $merge_info = array();
+  if (isset($info['includes'])) {
+    foreach ($info['includes'] as $include) {
+      $more_info = _make_site_get_info($include);
+      $merge_info = array_merge_recursive_distinct($merge_info, $more_info);
+    }
+  }
+
+  $info = array_merge_recursive_distinct($info, $merge_info);
+
+  return $info;
+}
+
+/**
+ * http://danielsmedegaardbuus.dk/2009-03-19/phps-array_merge_recursive-as-it-should-be/
+ */
+function &array_merge_recursive_distinct(array &$array1, &$array2 = null)
+{
+  $merged = $array1;
+ 
+  if (is_array($array2))
+    foreach ($array2 as $key => $val)
+      if (is_array($array2[$key]))
+        $merged[$key] = is_array($merged[$key]) ? array_merge_recursive_distinct($merged[$key], $array2[$key]) : $array2[$key];
+      else
+        $merged[$key] = $val;
+ 
+  return $merged;
+}
+
+/**
+ * Generate git subtree add command to be run from top-level of repo.
+ *
+ * @param string directory
+ *   Directory name where subtree should live
+ *
+ * @param array $details
+ *   Relevant details for git subtree add command:
+ *    - uri
+ *    - branch
+ *    - squash
+ *    - message
+ *
+ * @return string | bool
+ *   Return command to be executed. False for don't do anything.
+ */
+function _make_site_subtree_add($directory, $details) {
+  $prefix = _make_site_get_prefix($directory);
+
+  if (!file_exists($prefix)) {
+    // Subtree has already been created. Or there's a directory in our way. Skip this step.
+    drush_log(dt("This directory already exists: !prefix", $prefix), array('!prefix' => $prefix), 'notice');
+    drush_log(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory and re-run the make-site command.", $prefix), array('!prefix' => $prefix), 'warning');
+    // We're done. Return.
+    return FALSE;
+  }
+
+  // Make sure we have minimum required $details.
+  $uri = _make_site_get_uri($details);
+  $branch =  _make_site_get_branch($details);
+  if (!$uri || !$branch) {
+    // We're done. Return.
+    return FALSE;
+  }
+
+  // Squash commit history of subtree into a single commit?
+  $squash_history = (isset($details['squash'])) ? $details['squash'] : FALSE;
+  $squash = ($squash_history) ? ' --squash' : '';
+
+  // Add custom commit message?
+  $add_custom_message = (isset($details['message'])) ? $details['message'] : FALSE;
+  $message = ($add_custom_message) ? " --message='{$details['message']}'" : '';
+
+  // Build the command to add subtree for the first time.
+  $command = "git subtree add --prefix={$prefix} {$squash} {$message} $uri $branch";
+
+  return $command;  
+}
+
+/**
+ * Generate git subtree pull command to be run from top-level of repo.
+ *
+ * @param string directory
+ *   Directory name where subtree should live
+ *
+ * @param array $details
+ *   Relevant details for git subtree add command:
+ *    - uri
+ *    - branch
+ *    - squash
+ *    - message
+ *
+ * @return string | bool
+ *   Return command to be executed. False for don't do anything.
+ */
+function _make_site_subtree_pull($directory, $details) {
+  $prefix = _make_site_get_prefix($directory);
+  $uri = _make_site_get_uri($details);
+  $branch =  _make_site_get_branch($details);
+
+  $command = "git subtree pull --prefix={$prefix} {$uri} {$branch}";
+
+  return $command;
+}
+
+/**
+ * @param string $directory
+ *   Name of directory where subtree should go.
+ *
+ * @return string $prefix
+ *   Path to subtree from top-level of repo.
+ */
+function _make_site_get_prefix($directory) {
+  return "projects/{$directory}";
+}
+
+/**
+ * @param array $details
+ *   Relevant details for git subtree add command:
+ *
+ * @return string | bool
+ */
+function _make_site_get_uri($details) {
+  if (!(isset($details['uri']) || !strlen($details['uri']) > 0)) {
+    return drush_set_error('make_site', dt("uri is a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
+  }
+  else {
+    return $details['uri'];
+  }
+}
+
+/**
+ * @param array $details
+ *   Relevant details for git subtree add command:
+ *
+ * @return string | bool
+ */
+function _make_site_get_branch($details) {
+  if (!(isset($details['branch']) || !strlen($details['branch']) > 0)) {
+    return drush_set_error('make_site', dt("branchis a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
+  }
+  else {
+    return $details['branch'];
+  }
+}
+
+/**
+ * @param string $project_name
+ *  Name of project (module, profile, theme, library).
+ *
+ * @param array $info
+ *  Full project info array from make files.
+ *
+ * @return float | bool
+ *  Project version number specified in make file. False if unavailable.
+ */
+function _make_site_get_tag($project_name, $info) {
+  foreach ($info['projects'] as $name => $details) {
+    if ($name == $project_name) {
+      $has_version = (isset($details['version'])) ? TRUE : FALSE;
+      $tag = ($has_version) ? $details['version'] : FALSE;
+    }
+  }
+  return $tag; 
+}
+
+/**
+ * Return command for git subtree merge.
+ *
+ * Note: This terminology is a little confusing. To "checkout" a particular
+ * tagged version for a subtree you need to do a git subtree "merge". There is
+ * no subtree checkout command. 
+ *
+ * @param string $directory
+ *
+ * @param float $tag
+ *
+ * @return string
+ *   Git subtree merge command to be executed.
+ */
+function _make_site_subtree_merge($directory, $tag) {
+  $prefix = _make_site_get_prefix($directory);
+  $command = "git subtree merge --prefix={$prefix} {$tag}";
+  return $command;
+}
+
+/**
+ * Return command to generate symlink to subtree.
+ *
+ * This command must be run from top-level of repo.
+ *
+ * @param string $name
+ *
+ * @param string $path
+ */
+function _make_site_subtree_add_symlink($name, $path) {
+  // Get path to parent directory.
+  $pos = strpos($path, $name);
+  $parent_directory = substr($path, 0, $pos);
+
+  // Get source, relative to parent directory inside docroot.
+  $count = count(explode('/', $path));
+  $source = '';
+  for ($i = 0; $i < $count; $i++) { 
+    $source .= '../'; 
+  };
+  // Add prefix to relative source path.
+  $source .= _make_site_get_prefix($name);
+
+  // Change directory to parent directory. Then create symlink.
+  $command = "cd {$parent_directory}; ln -s {$source} {$name};";
+
+  return $command;  
 }
