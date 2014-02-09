@@ -195,13 +195,6 @@ function drush_site_make($config_file) {
  * @return array $config
  */
 function _site_make_get_config($config_file) {
-  if (file_exists($config_file)) {
-    include_once $config_file;
-  }
-  else {
-    return drush_set_error('site_make', dt('Config file does not exist: !here.', array('!here' => $config_file)));
-  }
-
   if (!class_exists('Symfony\Component\Yaml')) {
     // For Drush PSR-0 and Composer information, see http://drupal.org/node/1316322.
     $path = DRUSH_BASE_PATH . '/lib/Yaml-' . DRUSH_YAML_VERSION;
@@ -214,9 +207,9 @@ function _site_make_get_config($config_file) {
   $config = $parser->parse(file_get_contents('mysite.config.yml'));
 
   // If requested, output loaded config
-  if (drush_get_option('show-config')) {
+  if (drush_get_option('show-config', FALSE)) {
     drush_print('$config:');
-    drush_print(print_r($config));
+    drush_print(drush_format($config, NULL, 'yaml'));
   }
 
   return $config;
