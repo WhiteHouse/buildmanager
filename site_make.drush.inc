@@ -165,9 +165,6 @@ function drush_site_make($config_file) {
     }
 
     // Remove files checked out by drush. (To be replaced with a symlink.)
-    $path = $details['path'];
-    $commands[] = "rm -r {$path}";
-
     // Add symlink pointing to your local subtree.
     $commands[] = _site_make_subtree_add_symlink($subtree_name, $path);
   }
@@ -427,9 +424,10 @@ function _site_make_subtree_merge($directory, $tag) {
  * @param string $path
  */
 function _site_make_subtree_add_symlink($name, $path) {
-  // Get path to parent directory.
-  $pos = strpos($path, $name);
-  $parent_directory = substr($path, 0, $pos);
+  // Make sure $path exists.
+  if (!file_exists($path)) {
+    return drush_set_error('site_make', dt('This directory does not exist: !path'), array('!path' => $path));
+  }
 
   // Get source, relative to parent directory inside docroot.
   $count = count(explode('/', $path));
@@ -440,8 +438,8 @@ function _site_make_subtree_add_symlink($name, $path) {
   // Add prefix to relative source path.
   $source .= _site_make_get_prefix($name);
 
-  // Change directory to parent directory. Then create symlink.
-  $command = "cd {$parent_directory}; ln -s {$source} {$name};";
+  // Remove the directory. Replace it with a symlink.
+  $command = "rm -rf {$path}; ln -s {$source} {$path};";
 
   return $command;  
 }
