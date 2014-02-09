@@ -201,7 +201,7 @@ function _site_make_get_config($config_file) {
     require_once "$path/Inline.php";
   }
   $parser = new Parser();
-  $config = $parser->parse(file_get_contents('mysite.config.yml'));
+  $config = $parser->parse(file_get_contents($config_file));
 
   // If requested, output loaded config
   if (drush_get_option('show-config', FALSE)) {
