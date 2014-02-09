@@ -166,7 +166,7 @@ function drush_site_make($config_file) {
 
     // Remove files checked out by drush. (To be replaced with a symlink.)
     // Add symlink pointing to your local subtree.
-    $commands[] = _site_make_subtree_add_symlink($subtree_name, $path);
+    $commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
   }
 
   // Add custom commands.
@@ -424,19 +424,30 @@ function _site_make_subtree_merge($directory, $tag) {
  * @param string $path
  */
 function _site_make_subtree_add_symlink($name, $path) {
+  // Get path to subtree, relative to top-level directory.
+  $prefix = _site_make_get_prefix($name);
+  /*
+  // TODO: Find a better place for this error handling only makes sense at runtime. If this is an
+  // initial build, or a rebuild with new projects, this will always error out,
+  // with the checks being executed here, before the commands actually run.
   // Make sure $path exists.
   if (!file_exists($path)) {
     return drush_set_error('site_make', dt('This directory does not exist: !path'), array('!path' => $path));
   }
+  // Make sure the subtree exists.
+  if (!file_exists($path)) {
+    return drush_set_error('site_make', dt('This subtree prefix not exist: !prefix'), array('!prefix' => $prefix));
+  }
+  // */
 
   // Get source, relative to parent directory inside docroot.
   $count = count(explode('/', $path));
   $source = '';
-  for ($i = 0; $i < $count; $i++) { 
+  for ($i = 0; $i < $count -1; $i++) { 
     $source .= '../'; 
   };
   // Add prefix to relative source path.
-  $source .= _site_make_get_prefix($name);
+  $source .= $prefix;
 
   // Remove the directory. Replace it with a symlink.
   $command = "rm -rf {$path}; ln -s {$source} {$path};";
