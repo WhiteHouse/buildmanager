@@ -190,7 +190,7 @@ function drush_site_make($config_file) {
 function _site_make_get_config($config_file) {
   if (!class_exists('Symfony\Component\Yaml\Parser')) {
     // For Drush PSR-0 and Composer information, see http://drupal.org/node/1316322.
-    drush_log('Autoloading Symfony\Component\Yaml\Parser failed.');
+    drush_log('Autoloading Symfony\Component\Yaml\Parser failed.', 'error');
     return;
   }
   $parser = new Symfony\Component\Yaml\Parser();
