@@ -1,8 +1,4 @@
 <?php
-use Symfony\Component\Yaml\Parser;
-use Symfony\Component\Yaml\Unescaper;
-use Symfony\Component\Yaml\Inline;
-
 /**
  * @file
  *   site-make drush command.
@@ -192,15 +188,12 @@ function drush_site_make($config_file) {
  * @return array $config
  */
 function _site_make_get_config($config_file) {
-  if (!class_exists('Symfony\Component\Yaml')) {
+  if (!class_exists('Symfony\Component\Yaml\Parser')) {
     // For Drush PSR-0 and Composer information, see http://drupal.org/node/1316322.
-    $path = DRUSH_BASE_PATH . '/lib/Yaml-' . DRUSH_YAML_VERSION;
-    require_once "$path/Yaml.php";
-    require_once "$path/Parser.php";
-    require_once "$path/Unescaper.php";
-    require_once "$path/Inline.php";
+    drush_log('Autoloading Symfony\Component\Yaml\Parser failed.');
+    return;
   }
-  $parser = new Parser();
+  $parser = new Symfony\Component\Yaml\Parser();
   $config = $parser->parse(file_get_contents($config_file));
 
   // If requested, output loaded config
