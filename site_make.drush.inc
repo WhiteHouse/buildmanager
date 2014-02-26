@@ -270,7 +270,7 @@ function &array_merge_recursive_distinct(array &$array1, &$array2 = null)
 function _site_make_subtree_add($directory, $details) {
   $prefix = _site_make_get_prefix($directory);
 
-  if (!file_exists($prefix)) {
+  if (file_exists($prefix)) {
     // Subtree has already been created. Or there's a directory in our way. Skip this step.
     drush_log(dt("This directory already exists: !prefix", $prefix), array('!prefix' => $prefix), 'notice');
     drush_log(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory and re-run the site-make command.", $prefix), array('!prefix' => $prefix), 'warning');
