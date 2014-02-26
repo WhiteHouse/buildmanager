@@ -4,8 +4,8 @@ site-make requires two features not available currently in Drush 6, drush make's
 --no-recursion flag and autoloading. Use the master branch and install drush
 with composer to get this to work.
 
-Gotchas
--------
+Tips for including multiple make files in your build file
+----------------------------------------------------------
 
   If you're including multiple make files, all properties need keys. For example...
 
