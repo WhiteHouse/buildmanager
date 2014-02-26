@@ -1,0 +1,17 @@
+target: docroot
+build_file: build.make
+subtrees:
+  example_profile:
+    path: docroot/profiles/example_profile
+    uri: 'https://drupal.org/project/example_profile'
+    branch: 7.x-1.x
+    squash: false
+  my_module:
+    path: docroot/sites/all/modules/contrib/my_module
+    uri: 'https://drupal.org/project/my_module'
+    branch: 7.x-1.x
+    squash: false
+commands:
+  - 'rm -rf docroot/sites/default; cd docroot/sites; ln -s ../../symlink-these/default default'
+  - 'rm -rf docroot/.htaccess; cd docroot/; ln -s ../symlink-these/.htaccess .htaccess'
+  - 'rm -rf docroot/robots.txt; cd docroot/; ln -s ../symlink-these/robots.txt robots.txt'
