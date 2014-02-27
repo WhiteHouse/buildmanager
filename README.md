@@ -62,12 +62,11 @@ Usage
   3. Do this:
       
         cd /path/to/my-site-repo
-        drush site-make ./site_make.mysite.yml --message="Update example distro to 7.x-1.3."
+        drush site-make ./site_make.mysite.yml --message="Update example distro to 7.x-1.3." -v
 
      Helpful additional options provided by Drush:
 
-        # Use -v or --debug to see what drush is doing under the hood.
-        drush site-make ./site_make.mysite.yml -v --message="Update example distro to 7.x-1.3."
+        # Use --debug to see more info about what drush is doing under the hood.
         drush site-make ./site_make.mysite.yml -v --debug --message="Update example distro to 7.x-1.3."
  
         # Use --simulate to see the commands drush will execute when you run
