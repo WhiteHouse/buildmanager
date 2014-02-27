@@ -29,6 +29,9 @@ function site_make_drush_command() {
       'show-config' => array(
         'description' => 'Print $config array from mysite.config.inc. (Helpful for development.)',
       ),
+      'message' => array(
+        'description' => 'Message to include at the beginning of any new commits.',
+      ),
       'simulate' => array(
         'description' => 'Output commands to be executed for examination, but do not actually execute them.',
       ),
@@ -36,6 +39,7 @@ function site_make_drush_command() {
     'examples' => array(
       'drush site-make mysite.config.inc' => '',
       'drush mks mysite.config.inc --show-info' => '',
+      'drush mks mysite.config.inc --message="Rebuild with example_distro release 7.x-1.5"' => '',
     ),
     'aliases' => array('mks'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH, // No bootstrap at all.
@@ -129,6 +133,9 @@ function drush_site_make($config_file) {
     drush_print(print_r($info));
   }
 
+  // Get optional commit message.
+  $message = drush_get_option('message', FALSE);
+
   // Build up $commands list to be executed...
   $commands = array();
 
@@ -140,11 +147,17 @@ function drush_site_make($config_file) {
   
   // Drush make.
   $commands[] = "drush make {$build_file} {$target} --no-recursion --no-gitinfofile";
+  // Commit if there are any changes, otherwise subtree stuff won't work.
+  $last_action = dt('Committing updates after executing: ') . end($commands);
+  $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
+  $commands[] = _site_make_commit($commit_message);
 
   // Set up subtrees.
   foreach ($config['subtrees'] as $subtree_name => $details) {
+
     // Add git subtree if it doesn't already exist.
     if($add_subtree =  _site_make_subtree_add($subtree_name, $details)) {
+      // Add subtree.
       $commands[] = $add_subtree;
     }
 
@@ -163,6 +176,10 @@ function drush_site_make($config_file) {
     // Remove files checked out by drush. (To be replaced with a symlink.)
     // Add symlink pointing to your local subtree.
     $commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
+    // Commit.
+    $last_action = dt("Updated code base to use subtree: !subtree_name.\n\n\tReplaced drush make download with symlink.", array('!subtree_name' => $subtree_name));
+    $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
+    $commands[] = _site_make_commit($commit_message);
   }
 
   // Add custom commands.
@@ -442,8 +459,23 @@ function _site_make_subtree_add_symlink($name, $path) {
   // Add prefix to relative source path.
   $source .= $prefix;
 
+  // Parent directory for symlink.
+  $pos = strpos($path, $name);
+  $parent_directory = substr($path, 0, $pos);
+
   // Remove the directory. Replace it with a symlink.
-  $command = "rm -rf {$path}; ln -s {$source} {$path};";
+  $command = "rm -rf {$path}; cd {$parent_directory}; ln -s {$source} {$name};";
 
   return $command;  
+}
+
+/**
+ * @param string $message
+ *
+ * @return string $command
+ */
+function _site_make_commit($message) {
+  // Add any new files added to the repo.
+  $command = "git add . ; git commit -am '{$message}';";
+  return $command;
 }
