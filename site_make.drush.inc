@@ -152,37 +152,13 @@ function drush_site_make($config_file) {
   $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
   $commands[] = _site_make_commit($commit_message);
 
-  // Set up subtrees.
-  foreach ($config['subtrees'] as $subtree_name => $details) {
-
-    // Add git subtree if it doesn't already exist.
-    if($add_subtree =  _site_make_subtree_add($subtree_name, $details)) {
-      // Add subtree.
-      $commands[] = $add_subtree;
-    }
-
-    // Pull in newest updates from subtree's external repo.
-    $commands[] = _site_make_subtree_pull($subtree_name, $details);
-
-    // Checkout tagged version of project specified in make file.
-    if ($tag = _site_make_get_tag($subtree_name, $info)) {
-      $commands[] = _site_make_subtree_merge($subtree_name, $tag);
-    }
-    else {
-      // @todo Detect latest recommended release on d.o when no version is specified. Consider checking that out to better match standard make file behavior?
-      drush_log(dt("No version specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
-    }
-
-    // Remove files checked out by drush. (To be replaced with a symlink.)
-    // Add symlink pointing to your local subtree.
-    $commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
-    // Commit.
-    $last_action = dt("Updated code base to use subtree: !subtree_name.\n\n\tReplaced drush make download with symlink.", array('!subtree_name' => $subtree_name));
-    $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
-    $commands[] = _site_make_commit($commit_message);
+  // If there are subtrees in the config file, get commands for adding/updating subtrees.
+  if (isset($config['subtrees'])) {
+    $subtree_commands = _site_make_get_subtree_commands();
+    $commands = array_merge($commands, $subtree_commands);
   }
-
-  // Add custom commands.
+ 
+  // Add custom commands from site make config file.
   foreach ($config['commands'] as $command) {
     $commands[] = $command;
   }
@@ -478,4 +454,60 @@ function _site_make_commit($message) {
   // Add any new files added to the repo.
   $command = "git add . ; git commit -am '{$message}';";
   return $command;
+}
+
+/**
+ * Returns array of commands to be executed to add/update git subtrees in a site
+ * repo's projects directory.
+ *
+ * @param array $config
+ *   Config loaded from site make YAML file
+ *
+ * @param array $info
+ *   Info from make files
+ *
+ * @return array $commands
+ */
+function _site_make_get_subtree_commands($config, $info) {
+  $commands = array();
+
+  // Before adding/pulling subtrees, make sure parent directory for --prefix exists.
+  if (!file_exists('projects')) {
+    mkdir($directory, 0777, true); 
+  }
+  else if (file_exists('projects') && !is_dir('projects')) {
+    return drush_set_error('site_make', dt("uri is a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
+  }
+
+  // Add/pull subtrees.
+  foreach ($config['subtrees'] as $subtree_name => $details) {
+
+    // Add git subtree if it doesn't already exist.
+    if($add_subtree =  _site_make_subtree_add($subtree_name, $details)) {
+      // Add subtree.
+      $commands[] = $add_subtree;
+    }
+
+    // Pull in newest updates from subtree's external repo.
+    $commands[] = _site_make_subtree_pull($subtree_name, $details);
+
+    // Checkout tagged version of project specified in make file.
+    if ($tag = _site_make_get_tag($subtree_name, $info)) {
+      $commands[] = _site_make_subtree_merge($subtree_name, $tag);
+    }
+    else {
+      // @todo Detect latest recommended release on d.o when no version is specified. Consider checking that out to better match standard make file behavior?
+      drush_log(dt("No version specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
+    }
+
+    // Remove files checked out by drush. (To be replaced with a symlink.)
+    // Add symlink pointing to your local subtree.
+    $commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
+    // Commit.
+    $last_action = dt("Updated code base to use subtree: !subtree_name.\n\n\tReplaced drush make download with symlink.", array('!subtree_name' => $subtree_name));
+    $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
+    $commands[] = _site_make_commit($commit_message);
+  }
+ 
+  return $commands;
 }
