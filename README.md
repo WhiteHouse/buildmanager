@@ -34,12 +34,6 @@ About
       with internal work on a site repo, then lets you easily push that work out
       to public repos when it's ready to be released.
 
-TODO
------
-Currently site-make turns off recursion and expects all make files to be
-included in a master build.make. It could be possible to get rid of this, but
-this could create confusion and complexity. Revisit this.
-
 Dependencies
 ------------
 
@@ -50,8 +44,12 @@ Dependencies
 Usage
 -----
 
-  1. Set up a build.make file at the top-level of your repository. (See
-     build.example.make.)
+  1. Set up a build.make file at the top-level of your repository. Drush make
+     will use this to set up your site. (NOTE: You can include other make files in you
+     your build.make, and included make files can include other make files. But
+     when drush make runs with the --no-recursion flag. If your make file
+     downloads a project with its own make file, drush make will NOT
+     automatically build the stuff specified by that make file.)
 
   2. Set up config for your own site build in site_make.example.yml. This
      includes (see site_make.example.yml): 
@@ -64,7 +62,17 @@ Usage
   3. Do this:
       
         cd /path/to/my-site-repo
+        drush site-make ./site_make.mysite.yml --message="Update example distro to 7.x-1.3."
+
+     Helpful additional options provided by Drush:
+
+        # Use -v or --debug to see what drush is doing under the hood.
         drush site-make ./site_make.mysite.yml -v --message="Update example distro to 7.x-1.3."
+        drush site-make ./site_make.mysite.yml -v --debug --message="Update example distro to 7.x-1.3."
+ 
+        # Use --simulate to see the commands drush will execute when you run
+        # site make (without actually running it).
+        drush site-make ./site_make.mysite.yml --message="Update example distro to 7.x-1.3." --simulate
 
 Tips for including multiple make files in your build file
 ----------------------------------------------------------
@@ -86,4 +94,10 @@ Tips for including multiple make files in your build file
      build-example.make has this line:  includes[base] = path/to/base.make
      base.make has this line:           includes[core] = drupal-org-core.make
      base.make also has this line:      includes[contrib] = drupal-org.make
+
+TODO
+-----
+Currently site-make turns off recursion and expects all make files to be
+included in a master build.make. It could be possible to get rid of this, but
+this could create confusion and complexity. Revisit this.
 
