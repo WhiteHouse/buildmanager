@@ -34,13 +34,18 @@ About
       with internal work on a site repo, then lets you easily push that work out
       to public repos when it's ready to be released.
 
-TODO Currently site-make turns off recursion. We can probably get rid of that
-and just provide clearer documentation about how this bit works.
+TODO
+-----
+Currently site-make turns off recursion and expects all make files to be
+included in a master build.make. It could be possible to get rid of this, but
+this could create confusion and complexity. Revisit this.
 
 Dependencies
 ------------
 
   - Drush master branch (until --no-recurse and autoloading are committed to 6.x)
+
+  - Git subtree
 
 Usage
 -----
