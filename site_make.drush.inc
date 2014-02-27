@@ -121,8 +121,11 @@ function drush_site_make($config_file) {
   // Load config file, providing $conf variable.
   $config = _site_make_get_config($config_file);
 
+  // Get variables from $config;
+  $build_file = $config['build_file'];
+
   // Assemble $info array by loading, parsing and merging make file(s).
-  $info = _site_make_get_info($config);
+  $info = _site_make_get_info($build_file);
 
   // If requested, output full build info.
   if (drush_get_option('show-info')) {
@@ -198,16 +201,10 @@ function _site_make_get_config($config_file) {
 /**
  * Parse make/info files.
  *
- * @param array $config
- *   Config from site make YAML file.
- *
  * @return array $info
- *   Assemble $info array by loading, parsing and merging make file(s).
+ *  Assemble $info array by loading, parsing and merging make file(s).
  */
-function _site_make_get_info($config) {
-  // Get variables from $config;
-  $file = $config['build_file'];
-
+function _site_make_get_info($file) {
   // Load $info from info/make file if it exists.
   if (file_exists($file)) {
     $info = make_parse_info_file($file);  
