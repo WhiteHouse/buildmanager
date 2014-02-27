@@ -154,7 +154,7 @@ function drush_site_make($config_file) {
 
   // If there are subtrees in the config file, get commands for adding/updating subtrees.
   if (isset($config['subtrees'])) {
-    $subtree_commands = _site_make_get_subtree_commands();
+    $subtree_commands = _site_make_get_subtree_commands($config);
     $commands = array_merge($commands, $subtree_commands);
   }
  
@@ -473,7 +473,10 @@ function _site_make_get_subtree_commands($config, $info) {
 
   // Before adding/pulling subtrees, make sure parent directory for --prefix exists.
   if (!file_exists('projects')) {
-    mkdir($directory, 0777, true); 
+    $success = mkdir('projects', 0777, true); 
+    if (!$success) {
+      return drush_set_error('site_make', dt("Failed creating directory: projects"), 'error');
+    }
   }
   else if (file_exists('projects') && !is_dir('projects')) {
     return drush_set_error('site_make', dt("uri is a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
