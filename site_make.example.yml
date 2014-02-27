@@ -16,3 +16,7 @@ commands:
   - 'rm -rf docroot/.htaccess; cd docroot/; ln -s ../symlink-these/.htaccess .htaccess'
   - 'rm -rf docroot/robots.txt; cd docroot/; ln -s ../symlink-these/robots.txt robots.txt'
   - 'git add . ; git commit -m "Restored symlinks to sites/default, .htaccess, robots.txt after drush make rebuild.";'
+# If your site includes libraries installed by composer (e.g. composer_autoload
+# or guzzle module) you'll want to include something like this:
+# - 'cd docroot/sites/all/modules/guzzle; composer install;
+# - 'git add . ; git commit -m "Added guzzle's composer libraries (via composer install)"; '
