@@ -59,7 +59,7 @@ Usage
   3. Do this:
       
         cd /path/to/my-site-repo
-        drush site-make ./site_make.mysite.yml
+        drush site-make ./site_make.mysite.yml -v --message="Update example distro to 7.x-1.3."
 
 Tips for including multiple make files in your build file
 ----------------------------------------------------------
