@@ -471,6 +471,9 @@ function _site_make_commit($message) {
 function _site_make_get_subtree_commands($config, $info) {
   $commands = array();
 
+  // Get optional commit message.
+  $message = drush_get_option('message', FALSE);
+
   // Before adding/pulling subtrees, make sure parent directory for --prefix exists.
   if (!file_exists('projects')) {
     $success = mkdir('projects', 0777, true); 
