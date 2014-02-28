@@ -1,5 +1,10 @@
+# Directory where you what drush make to build your site code base
 target: docroot
+
+# Parent make file for building code base (and including any other relevant make files)
 build_file: build.make
+
+# Git subtrees, for any projects you maintain outside this site repository
 subtrees:
   example_profile:
     path: docroot/profiles/example_profile
@@ -11,12 +16,15 @@ subtrees:
     uri: 'https://drupal.org/project/my_module'
     branch: 7.x-1.x
     squash: false
+
+# Custom commands. These are run after subtrees are updated and after the drush make
+# rebuild runs, before any changes from drush make are committed.
 commands:
   - 'rm -rf docroot/sites/default; cd docroot/sites; ln -s ../../symlink-these/default default'
   - 'rm -rf docroot/.htaccess; cd docroot/; ln -s ../symlink-these/.htaccess .htaccess'
   - 'rm -rf docroot/robots.txt; cd docroot/; ln -s ../symlink-these/robots.txt robots.txt'
   - 'git add . ; git commit -m "Restored symlinks to sites/default, .htaccess, robots.txt after drush make rebuild.";'
-# If your site includes libraries installed by composer (e.g. composer_autoload
-# or guzzle module) you'll want to include something like this:
-# - 'cd docroot/sites/all/modules/guzzle; composer install;
-# - 'git add . ; git commit -m "Added guzzle's composer libraries (via composer install)"; '
+  # If your site includes libraries installed by composer (e.g. composer_autoload
+  # or guzzle module) you'll want to include something like this:
+  # - 'cd docroot/sites/all/modules/guzzle; composer install;
+  # - 'git add . ; git commit -m "Added guzzle's composer libraries (via composer install)"; '
