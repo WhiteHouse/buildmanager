@@ -126,19 +126,6 @@ function drush_site_make($config_file) {
   drush_print(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'status');
   $config = _site_make_get_config($config_file);
 
-  // Get variables from $config;
-  $build_file = $config['build_file'];
-  drush_print(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'status');
-
-  // Assemble $info array by loading, parsing and merging make file(s).
-  $info = _site_make_get_info($build_file);
-
-  // If requested, output full build info.
-  if (drush_get_option('show-info')) {
-    drush_print('$info:');
-    drush_print(print_r($info));
-  }
-
   // Build up $commands list to be executed...
   $commands = array();
 
@@ -171,10 +158,32 @@ function drush_site_make($config_file) {
     }
 
   }
+
+  // Execute subtree commands now. This way, drush make will include info
+  // from make files updated with git subtree pulls.
+  foreach ($commands as $command) {
+    drush_shell_exec($command);
+  }
+  // Zero out $commands. Build up next array of commands to be executed
+  $commands = array();
   
   //
   // Drush make.
   //
+
+  // Get variables from $config;
+  $build_file = $config['build_file'];
+  drush_print(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'status');
+
+  // Assemble $info array by loading, parsing and merging make file(s).
+  $info = _site_make_get_info($build_file);
+
+  // If requested, output full build info.
+  if (drush_get_option('show-info')) {
+    drush_print('$info:');
+    drush_print(print_r($info));
+  }
+
 
   // If target director already exists, remove it.
   $target = $config['target'];
