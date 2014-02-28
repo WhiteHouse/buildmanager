@@ -145,18 +145,12 @@ function drush_site_make($config_file) {
   // Build up $commands list to be executed...
   $commands = array();
 
-  // If target director already exists, remove it.
-  $target = $config['target'];
-  if (file_exists($target)) {
-    $commands[] = "rm -rf $target";
-  }
-  
-  // Drush make.
-  $commands[] = "drush make {$build_file} {$target} --no-recursion --no-gitinfofile";
-  // Commit if there are any changes, otherwise subtree stuff won't work.
-  $last_action = dt('Committing updates after executing: ') . end($commands);
-  $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
-  $commands[] = _site_make_commit($commit_message);
+  // 
+  // Add/update git subtrees.
+  //
+
+  // @todo Check if there are uncommitted changes locally. Exit if there are.
+  // Otherwise, subtree add/pull won't work.
 
   // If there are subtrees in the config file, get commands for adding/updating subtrees.
   if (isset($config['subtrees'])) {
@@ -164,7 +158,22 @@ function drush_site_make($config_file) {
     $subtree_commands = _site_make_get_subtree_commands($config);
     $commands = array_merge($commands, $subtree_commands);
   }
- 
+  
+  //
+  // Drush make.
+  //
+
+  // If target director already exists, remove it.
+  $target = $config['target'];
+  if (file_exists($target)) {
+    $commands[] = "rm -rf $target";
+  }
+  $commands[] = "drush make {$build_file} {$target} --no-recursion --no-gitinfofile";
+
+  //
+  // Custom, site-specific commands defined by config file.
+  //
+
   // Add custom commands from site make config file.
   foreach ($config['commands'] as $command) {
     $commands[] = $command;
@@ -174,6 +183,10 @@ function drush_site_make($config_file) {
   foreach ($commands as $command) {
     drush_shell_exec($command);
   }
+
+  // Commit.
+  $commit_message = ($message) ? $message : dt('Rebuild with drush site-make.');
+  $commands[] = _site_make_commit($commit_message);
 }
 
 /**
