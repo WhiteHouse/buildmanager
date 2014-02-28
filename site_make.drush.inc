@@ -35,11 +35,16 @@ function site_make_drush_command() {
       'simulate' => array(
         'description' => 'Output commands to be executed for examination, but do not actually execute them.',
       ),
+      // @todo
+      're-add' => array(
+        'description' => '@todo Remove and re-add comma separated list of subtree(s).',
+      ),
     ),
     'examples' => array(
       'drush site-make mysite.config.inc' => '',
       'drush mks mysite.config.inc --show-info' => '',
       'drush mks mysite.config.inc --message="Rebuild with example_distro release 7.x-1.5"' => '',
+      'drush mks mysite.config.inc --re-add=example1,example2,exampleN' => '',
     ),
     'aliases' => array('mks'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH, // No bootstrap at all.
@@ -117,7 +122,7 @@ function drush_site_make_validate($config_file) {
  * @see drush_invoke()
  * @see drush.api.php
  */
-function drush_site_make($config_file) {
+function drush_site_make($config_file = '') {
 
   // @todo Make $config_file optional. Scan directory for site_make.*.yml. If
   // more than one file exists, prompt user to select one.
