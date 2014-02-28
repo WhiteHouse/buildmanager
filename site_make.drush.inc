@@ -3,12 +3,12 @@
  * @file
  *   site-make drush command.
  *
- *   You can copy this file to any of the following
- *     1. A .drush folder in your HOME folder.
- *     2. Anywhere in a folder tree below an active module on your site.
- *     3. /usr/share/drush/commands (configurable)
- *     4. In an arbitrary folder specified with the --include option.
- *     5. Drupal's /drush or /sites/all/drush folders.
+ *  You can copy this file to any of the following
+ *    1. A .drush folder in your HOME folder.
+ *    2. Anywhere in a folder tree below an active module on your site.
+ *    3. /usr/share/drush/commands (configurable)
+ *    4. In an arbitrary folder specified with the --include option.
+ *    5. Drupal's /drush or /sites/all/drush folders.
  */
 
 /**
