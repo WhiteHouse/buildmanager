@@ -118,11 +118,17 @@ function drush_site_make_validate($config_file) {
  * @see drush.api.php
  */
 function drush_site_make($config_file) {
+
+  // @todo Make $config_file optional. Scan directory for site_make.*.yml. If
+  // more than one file exists, prompt user to select one.
+
   // Load config file, providing $conf variable.
+  drush_print(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'status');
   $config = _site_make_get_config($config_file);
 
   // Get variables from $config;
   $build_file = $config['build_file'];
+  drush_print(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'status');
 
   // Assemble $info array by loading, parsing and merging make file(s).
   $info = _site_make_get_info($build_file);
@@ -154,6 +160,7 @@ function drush_site_make($config_file) {
 
   // If there are subtrees in the config file, get commands for adding/updating subtrees.
   if (isset($config['subtrees'])) {
+    drush_print(dt('Preparing to add/update git subtrees specified here: !config_file', array('!config_file' => $config_file)), 'status');
     $subtree_commands = _site_make_get_subtree_commands($config);
     $commands = array_merge($commands, $subtree_commands);
   }
@@ -490,15 +497,18 @@ function _site_make_get_subtree_commands($config, $info) {
 
     // Add git subtree if it doesn't already exist.
     if($add_subtree =  _site_make_subtree_add($subtree_name, $details)) {
+      drush_print(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
       // Add subtree.
       $commands[] = $add_subtree;
     }
 
     // Pull in newest updates from subtree's external repo.
+    drush_print(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
     $commands[] = _site_make_subtree_pull($subtree_name, $details);
 
     // Checkout tagged version of project specified in make file.
     if ($tag = _site_make_get_tag($subtree_name, $info)) {
+      drush_print(dt('Preparing to merge !subtree_name subtree to tag: !tag', array('!subtree_name' => $subtree_name, '!tag' => $tag)), 'status');
       $commands[] = _site_make_subtree_merge($subtree_name, $tag);
     }
     else {
@@ -508,6 +518,7 @@ function _site_make_get_subtree_commands($config, $info) {
 
     // Remove files checked out by drush. (To be replaced with a symlink.)
     // Add symlink pointing to your local subtree.
+    drush_print(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'status');
     $commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
     // Commit.
     $last_action = dt("Updated code base to use subtree: !subtree_name.\n\n\tReplaced drush make download with symlink.", array('!subtree_name' => $subtree_name));
