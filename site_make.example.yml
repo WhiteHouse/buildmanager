@@ -8,14 +8,16 @@ build_file: build.make
 subtrees:
   example_profile:
     path: docroot/profiles/example_profile
-    uri: 'https://drupal.org/project/example_profile'
+    uri: 'http://git.drupal.org/project/example_profile.git'
     branch: 7.x-1.x
     squash: false
+    message: 'example_profile subtree added/updated from http://git.drupal.org/project/example_profile.git'
   my_module:
     path: docroot/sites/all/modules/contrib/my_module
-    uri: 'https://drupal.org/project/my_module'
+    uri: 'http://git.drupal.org/project/my_module.git'
     branch: 7.x-1.x
     squash: false
+    message: 'my_module subtree added/updated from http://git.drupal.org/project/my_module.git'
 
 # Custom commands. These are run after subtrees are updated and after the drush make
 # rebuild runs, before any changes from drush make are committed.
@@ -23,8 +25,6 @@ commands:
   - 'rm -rf docroot/sites/default; cd docroot/sites; ln -s ../../symlink-these/default default'
   - 'rm -rf docroot/.htaccess; cd docroot/; ln -s ../symlink-these/.htaccess .htaccess'
   - 'rm -rf docroot/robots.txt; cd docroot/; ln -s ../symlink-these/robots.txt robots.txt'
-  - 'git add . ; git commit -m "Restored symlinks to sites/default, .htaccess, robots.txt after drush make rebuild.";'
   # If your site includes libraries installed by composer (e.g. composer_autoload
   # or guzzle module) you'll want to include something like this:
   # - 'cd docroot/sites/all/modules/guzzle; composer install;
-  # - 'git add . ; git commit -m "Added guzzle's composer libraries (via composer install)"; '

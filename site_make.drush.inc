@@ -139,9 +139,6 @@ function drush_site_make($config_file) {
     drush_print(print_r($info));
   }
 
-  // Get optional commit message.
-  $message = drush_get_option('message', FALSE);
-
   // Build up $commands list to be executed...
   $commands = array();
 
@@ -154,9 +151,25 @@ function drush_site_make($config_file) {
 
   // If there are subtrees in the config file, get commands for adding/updating subtrees.
   if (isset($config['subtrees'])) {
+
     drush_print(dt('Preparing to add/update git subtrees specified here: !config_file', array('!config_file' => $config_file)), 'status');
-    $subtree_commands = _site_make_get_subtree_commands($config);
-    $commands = array_merge($commands, $subtree_commands);
+
+    // Prep projects directory. All subtrees will use --prefix=projects/$name
+    _site_make_prep_projects_directory();
+
+    // Hang onto symlink commands here. Add these to the $commands array after drush make.
+    $symlink_commands = array();
+
+    foreach ($config['subtrees'] as $subtree_name => $details) {
+      // Get commands to add, pull, and merge subtree.
+      $subtree_commands = _site_make_get_subtree_commands($subtree_name, $details);
+      // Remove files checked out by drush. Add symlink pointing to your local subtree.
+      drush_print(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'status');
+      $symlink_commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
+      // Add subtree commands to the beginning of the $commands array, to be executed before drush make.
+      $commands = array_merge($commands, $subtree_commands);
+    }
+
   }
   
   //
@@ -170,6 +183,9 @@ function drush_site_make($config_file) {
   }
   $commands[] = "drush make {$build_file} {$target} --no-recursion --no-gitinfofile";
 
+  // Replace downloaded projects with symlinks where subtrees are used.
+  $commands = array_merge($commands, $symlink_commands);
+
   //
   // Custom, site-specific commands defined by config file.
   //
@@ -179,14 +195,21 @@ function drush_site_make($config_file) {
     $commands[] = $command;
   }
 
+  //
+  // Commit.
+  // 
+
+  $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush site-make.');
+  $commands[] = _site_make_commit($message);
+
+  //
   // Execute commands.
+  //
+
   foreach ($commands as $command) {
     drush_shell_exec($command);
   }
 
-  // Commit.
-  $commit_message = ($message) ? $message : dt('Rebuild with drush site-make.');
-  $commands[] = _site_make_commit($commit_message);
 }
 
 /**
@@ -304,14 +327,33 @@ function _site_make_subtree_add($directory, $details) {
   $squash = ($squash_history) ? ' --squash' : '';
 
   // Add custom commit message?
-  $add_custom_message = (isset($details['message'])) ? $details['message'] : FALSE;
-  $message = ($add_custom_message) ? " --message='{$details['message']}'" : '';
+  $message = _site_make_add_subtree_commit_message($details);
 
   // Build the command to add subtree for the first time.
   $command = "git subtree add --prefix={$prefix} {$squash} {$message} $uri $branch";
 
   return $command;  
 }
+
+/**
+ * @param array $details
+ *   From site make YAML config file.
+ *
+ * @return string $command
+ *   A commit message flag to a git subtree add, pull, or merge command.
+ *   Empty string if no message should be added.
+ */
+function _site_make_add_subtree_commit_message($details) {
+  $drush_message = drush_get_option('message', '');
+  $subtree_message = (isset($details['message'])) ? $details['message'] : '';
+  if ($drush_message || $subtree_message) {
+    $custom_message = ($drush_message) ? "{$drush_message}\n\n\t{$subtree_message}" : $subtree_message;
+  }
+  $message = ($custom_message) ? " --message='{$custom_message}'" : '';
+
+  return $message; 
+}
+
 
 /**
  * Generate git subtree pull command to be run from top-level of repo.
@@ -333,8 +375,9 @@ function _site_make_subtree_pull($directory, $details) {
   $prefix = _site_make_get_prefix($directory);
   $uri = _site_make_get_uri($details);
   $branch =  _site_make_get_branch($details);
+  $message = _site_make_add_subtree_commit_message($details);
 
-  $command = "git subtree pull --prefix={$prefix} {$uri} {$branch}";
+  $command = "git subtree pull --prefix={$prefix} {$message} {$uri} {$branch}";
 
   return $command;
 }
@@ -416,7 +459,8 @@ function _site_make_get_tag($project_name, $info) {
  */
 function _site_make_subtree_merge($directory, $tag) {
   $prefix = _site_make_get_prefix($directory);
-  $command = "git subtree merge --prefix={$prefix} {$tag}";
+  $message = _site_make_add_subtree_commit_message($details);
+  $command = "git subtree merge --prefix={$prefix} {$message} {$tag}";
   return $command;
 }
 
@@ -477,23 +521,9 @@ function _site_make_commit($message) {
 }
 
 /**
- * Returns array of commands to be executed to add/update git subtrees in a site
- * repo's projects directory.
- *
- * @param array $config
- *   Config loaded from site make YAML file
- *
- * @param array $info
- *   Info from make files
- *
- * @return array $commands
+ * Prep projects directory.
  */
-function _site_make_get_subtree_commands($config, $info) {
-  $commands = array();
-
-  // Get optional commit message.
-  $message = drush_get_option('message', FALSE);
-
+function _site_make_prep_projects_directory() {
   // Before adding/pulling subtrees, make sure parent directory for --prefix exists.
   if (!file_exists('projects')) {
     $success = mkdir('projects', 0777, true); 
@@ -502,42 +532,49 @@ function _site_make_get_subtree_commands($config, $info) {
     }
   }
   else if (file_exists('projects') && !is_dir('projects')) {
-    return drush_set_error('site_make', dt("uri is a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
+    return drush_set_error('site_make', dt("Please remove the 'projects' file. We need to create a directory with that name for your subtrees."), 'error');
+  }
+  
+  if ($success) {
+    drush_print('A projects directory has been created at the top of your git repo. Git subtrees will be added there.');  
+  }
+}
+
+/**
+ * Returns array of commands to be executed to add/update a git subtree in a site
+ * repo's projects directory.
+ *
+ * @param array $subtree_name
+ *   Config loaded from site make YAML file
+ *
+ * @param array $details
+ *   Config loaded from site make YAML file
+ *
+ * @return array $commands
+ */
+function _site_make_get_subtree_commands($subtree_name, $details) {
+  $commands = array();
+
+  // Add git subtree if it doesn't already exist.
+  if($add_subtree =  _site_make_subtree_add($subtree_name, $details)) {
+    drush_print(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
+    // Add subtree.
+    $commands[] = $add_subtree;
   }
 
-  // Add/pull subtrees.
-  foreach ($config['subtrees'] as $subtree_name => $details) {
+  // Pull in newest updates from subtree's external repo.
+  drush_print(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
+  $commands[] = _site_make_subtree_pull($subtree_name, $details);
 
-    // Add git subtree if it doesn't already exist.
-    if($add_subtree =  _site_make_subtree_add($subtree_name, $details)) {
-      drush_print(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
-      // Add subtree.
-      $commands[] = $add_subtree;
-    }
-
-    // Pull in newest updates from subtree's external repo.
-    drush_print(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
-    $commands[] = _site_make_subtree_pull($subtree_name, $details);
-
-    // Checkout tagged version of project specified in make file.
-    if ($tag = _site_make_get_tag($subtree_name, $info)) {
-      drush_print(dt('Preparing to merge !subtree_name subtree to tag: !tag', array('!subtree_name' => $subtree_name, '!tag' => $tag)), 'status');
-      $commands[] = _site_make_subtree_merge($subtree_name, $tag);
-    }
-    else {
-      // @todo Detect latest recommended release on d.o when no version is specified. Consider checking that out to better match standard make file behavior?
-      drush_log(dt("No version specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
-    }
-
-    // Remove files checked out by drush. (To be replaced with a symlink.)
-    // Add symlink pointing to your local subtree.
-    drush_print(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'status');
-    $commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
-    // Commit.
-    $last_action = dt("Updated code base to use subtree: !subtree_name.\n\n\tReplaced drush make download with symlink.", array('!subtree_name' => $subtree_name));
-    $commit_message = ($message) ? "{$message}\n\n\t{$last_action}" : $last_action;
-    $commands[] = _site_make_commit($commit_message);
+  // Checkout tagged version of project specified in make file.
+  if ($tag = _site_make_get_tag($subtree_name, $info)) {
+    drush_print(dt('Preparing to merge !subtree_name subtree to tag: !tag', array('!subtree_name' => $subtree_name, '!tag' => $tag)), 'status');
+    $commands[] = _site_make_subtree_merge($subtree_name, $tag);
   }
- 
+  else {
+    // @todo Detect latest recommended release on d.o when no version is specified. Consider checking that out to better match standard make file behavior?
+    drush_log(dt("No version specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
+  }
+
   return $commands;
 }
