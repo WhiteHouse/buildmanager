@@ -51,6 +51,16 @@ Usage
      downloads a project with its own make file, drush make will NOT
      automatically build the stuff specified by that make file.)
 
+     For projects being included in your local repo as subtrees, your make file
+     must include a "revision" (commit ID) to specify a version number.
+
+     You can easily add/override a revision into a make file missing a revision
+     ID like this (imagine these two lines are the contents of your simple build.make):
+
+       includes[base] = projects/example_distro/build-example-distro.make
+       projects[my_project][download][revision] = abc1234
+       
+
   2. Set up config for your own site build in site_make.example.yml. This
      includes (see site_make.example.yml): 
      
@@ -58,6 +68,7 @@ Usage
        - where to build the site (e.g. docroot)
        - what projects to replace with git subtrees
        - any commands you want to run after the site is rebuilt
+
 
   3. Do this:
       
@@ -73,6 +84,7 @@ Usage
         # Use --simulate to see the commands drush will execute when you run
         # site make (without actually running it).
         drush site-make ./site_make.mysite.yml --message="Update example distro to 7.x-1.3 with drush site-make" --simulate
+
 
 Tips for including multiple make files in your build file
 ----------------------------------------------------------

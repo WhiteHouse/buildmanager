@@ -441,12 +441,49 @@ function _site_make_get_branch($details) {
  *  Name of project (module, profile, theme, library).
  *
  * @param array $info
- *  Full project info array from make files.
+ *  Project info array from make files.
+ *
+ * @return string
+ *  Project revision (commit) id specified in make file. False if unavailable.
+ */
+function _site_make_get_id($project_name, $project_info) {
+  $id = (isset($project_info['download']['revision'])) ? $project_info['download']['revision'] : FALSE;
+
+  if (!$id) {
+    // If no revision is specified in make file, figure out if this is
+    // intentional (someone WANTS to build at the tip of a branch) versus
+    // accidental (someone things they're specifying the version a different
+    // way).
+    
+    if (isset($project_info['version'])) {
+      $tag = $project_info['version'];
+    }
+    else if (isset($project_info['download']['tag'])) {
+      $tag = $project_info['download']['tag'];
+    }
+
+    if ($tag) {
+      return drush_set_error('site_make', dt('Commit ID ("revision") unavailable for !name. Please add a line like this to your make file to tell site-make what commit id to check out for version !tag: projects[!name][download][revision] = abc1234 '), array('!name' => $project_name, '!tag' => $tag));
+    }
+
+  }
+
+  return $id;
+}
+
+/**
+ * @param string $project_name
+ *  Name of project (module, profile, theme, library).
+ *
+ * @param array $info
+ *  Project info array from make files.
  *
  * @return float | bool
  *  Project version number specified in make file. False if unavailable.
  */
 function _site_make_get_tag($project_name, $project_info) {
+  $tag = '';
+
   if (isset($project_info['version'])) {
     $tag = $project_info['version'];
   }
@@ -469,15 +506,16 @@ function _site_make_get_tag($project_name, $project_info) {
  *
  * @param string $directory
  *
- * @param float $tag
+ * @param string $id
+ *   Commit id
  *
  * @return string
  *   Git subtree merge command to be executed.
  */
-function _site_make_subtree_merge($directory, $tag) {
+function _site_make_subtree_merge($directory, $id) {
   $prefix = _site_make_get_prefix($directory);
   $message = _site_make_add_subtree_commit_message($details);
-  $command = "git subtree merge --prefix={$prefix} {$message} {$tag}";
+  $command = "git subtree merge --squash --prefix={$prefix} {$message} {$id}";
   return $command;
 }
 
@@ -558,10 +596,6 @@ function _site_make_prep_projects_directory() {
 }
 
 /**
- *
- */
-
-/**
  * Returns array of commands to be executed to add/update a git subtree in a site
  * repo's projects directory.
  *
@@ -590,13 +624,13 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
     $commands[] = _site_make_subtree_pull($subtree_name, $details);
   }
 
-  if ($tag = _site_make_get_tag($subtree_name, $project_info)) {
-    drush_print(dt('Preparing to merge !subtree_name subtree to tag: !tag', array('!subtree_name' => $subtree_name, '!tag' => $tag)), 'status');
-    $commands[] = _site_make_subtree_merge($subtree_name, $tag);
+  if ($id = _site_make_get_id($subtree_name, $project_info)) {
+    drush_print(dt('Preparing to merge !subtree_name subtree to id: !id', array('!subtree_name' => $subtree_name, '!id' => $id)), 'status');
+    $commands[] = _site_make_subtree_merge($subtree_name, $id);
   }
   else {
     // @todo Detect latest recommended release on d.o when no version is specified. Consider checking that out to better match standard make file behavior?
-    drush_log(dt("No version specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
+    drush_log(dt("No 'revision' specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
   }
 
   return $commands;
