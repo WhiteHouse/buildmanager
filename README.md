@@ -59,6 +59,11 @@ Usage
 
        includes[base] = projects/example_distro/build-example-distro.make
        projects[my_project][download][revision] = abc1234
+
+     If your build.make includes a makefile from a git subtree, add it to your
+     repo like this:
+
+       git subtree add --prefix=projects/example --squash --message="Added tweetserver subtree. From https://github.com/example/example.git" https://github.com/example/example.git 7.x-1.x
        
 
   2. Set up config for your own site build in site_make.example.yml. This

@@ -390,7 +390,11 @@ function _site_make_subtree_pull($directory, $details) {
   $branch =  _site_make_get_branch($details);
   $message = _site_make_add_subtree_commit_message($details);
 
-  $command = "git subtree pull --prefix={$prefix} {$message} {$uri} {$branch}";
+  // Squash commit history of subtree into a single commit?
+  $squash_history = (isset($details['squash'])) ? $details['squash'] : FALSE;
+  $squash = ($squash_history) ? ' --squash' : '';
+
+  $command = "git subtree pull --prefix={$prefix} {$squash} {$message} {$uri} {$branch}";
 
   return $command;
 }
