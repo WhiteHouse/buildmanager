@@ -71,22 +71,6 @@ function site_make_drush_command() {
 }
 
 /**
- * Implementation of hook_drush_help().
- *
- * @param
- *   A string with the help section (prepend with 'drush:')
- *
- * @return
- *   A string with the help text for your command.
- */
-function site_make_drush_help($section) {
-  switch ($section) {
-    case 'drush:site-make':
-      return dt(""); // TODO
-  }
-}
-
-/**
  * Implementation of drush_hook_COMMAND_validate().
  */
 function drush_site_make_validate($config_file) {
@@ -130,18 +114,18 @@ function drush_site_make($config_file = '') {
   // more than one file exists, prompt user to select one.
 
   // Load config file, providing $conf variable.
-  drush_print(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'status');
+  drush_log(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'ok');
   $config = _site_make_get_config($config_file);
 
   // Assemble $info array by loading, parsing and merging make file(s).
   $build_file = $config['build_file'];
-  drush_print(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'status');
+  drush_log(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'ok');
   $info = _site_make_get_info($build_file);
 
   // If requested, output full build info.
   if (drush_get_option('show-info')) {
     drush_print('$info:');
-    drush_print(print_r($info));
+    drush_print_r($info));
   }
 
   // 
@@ -154,7 +138,7 @@ function drush_site_make($config_file = '') {
   // If there are subtrees in the config file, get commands for adding/updating subtrees.
   if (isset($config['subtrees'])) {
 
-    drush_print(dt('Preparing to add/update git subtrees specified here: !config_file', array('!config_file' => $config_file)), 'status');
+    drush_log(dt('Preparing to add/update git subtrees specified here: !config_file', array('!config_file' => $config_file)), 'ok');
 
     // Prep projects directory. All subtrees will use --prefix=projects/$name
     _site_make_prep_projects_directory();
@@ -179,6 +163,7 @@ function drush_site_make($config_file = '') {
   // Execute subtree commands now. This way, drush make will include info
   // from make files updated with git subtree pulls.
   foreach ($commands as $command) {
+    // @todo Add error handling.
     drush_shell_exec($command);
   }
   // Zero out $commands. Build up next array of commands to be executed
@@ -194,7 +179,7 @@ function drush_site_make($config_file = '') {
   if (file_exists($target)) {
     $commands[] = "rm -rf $target";
   }
-  $commands[] = "drush make {$build_file} {$target} --no-recursion --no-gitinfofile";
+  $commands[] = DRUSH_COMMAND . " make {$build_file} {$target} --no-recursion --no-gitinfofile";
 
   // Replace downloaded projects with symlinks where subtrees are used.
   $commands = array_merge($commands, $symlink_commands);
