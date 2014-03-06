@@ -1,16 +1,31 @@
-# Directory where you what drush make to build your site code base
+# Directory where you what drush make to build your site code base.
 target: docroot
 
-# Parent make file for building code base (and including any other relevant make files)
+# Parent make file for building code base (and including any other relevant make
+# files).
 build_file: build.make
 
-# Git subtrees, for any projects you maintain outside this site repository
+# Git subtrees, for any projects you maintain in git repos outside this site
+# repository. These could include modules, themes, or distros you maintain on
+# drupal.org or custom projects in repos somewhere else.
 subtrees:
   example_profile:
+    # Path to where drush make will store this project.
+    # This will be replaced with a symlink to your subtree stored in
+    # projects/example_profile.
     path: docroot/profiles/example_profile
+    # URI to git repo.
     uri: 'http://git.drupal.org/project/example_profile.git'
+    # Branch to git subtree add.
     branch: 7.x-1.x
+    # If squash is set to false, the whole external git history will be pulled
+    # into your site repo. (This can look messy and confusing to people who
+    # don't understand what they're looking at.)
     squash: true
+    # Include the message below with any git subtree commits.
+    # It's not obvious form the commit history where a subtree is pulled in
+    # from. It can be convienent to provide this info as a part of your commit
+    # message to prevent confusion.
     message: 'example_profile subtree added/updated from http://git.drupal.org/project/example_profile.git'
   my_module:
     path: docroot/sites/all/modules/contrib/my_module
