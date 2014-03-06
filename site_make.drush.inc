@@ -466,7 +466,7 @@ function _site_make_get_id($project_name, $project_info) {
     // If we found a tag, report an error. Presumably, they don't want to just
     // checkout the tip of the project's branch.
     if ($tag) {
-      return drush_set_error('site_make', dt('Commit ID ("revision") unavailable for !name. Please add a line like this to your make file to tell site-make what commit id to check out for version !tag: projects[!name][download][revision] = abc1234 '), array('!name' => $project_name, '!tag' => $tag));
+      return drush_set_error('site_make', dt("Commit ID (revision) unavailable for !name.\nPlease add a line like this to your make file to tell site-make what commit id to check out for version !tag:\n\tprojects[!name][download][revision] = abc1234", array('!name' => $project_name, '!tag' => $tag)));
     }
 
   }
