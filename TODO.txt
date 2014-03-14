@@ -1,0 +1,2 @@
+[ ] If working tree has modifications, exit and error out.
+[ ] If a subtree pull fails, exit and error out.

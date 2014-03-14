@@ -81,7 +81,7 @@ function site_make_drush_help($section) {
 }
 
 /**
- * Implements drush_hook_COMMAND_validate() for site_make_validate().
+ * Implements drush_hook_COMMAND_validate().
  */
 function drush_site_make_validate($config_file) {
   $is_valid = TRUE;
@@ -130,7 +130,7 @@ function drush_site_make($config_file = '') {
   // If requested, output full build info.
   if (drush_get_option('show-info')) {
     drush_print('$info:');
-    drush_print_r($info));
+    drush_print_r($info);
   }
 
   // Add/update git subtrees.
@@ -365,16 +365,27 @@ function _site_make_add_subtree_commit_message($details) {
  *   Directory name where subtree should live
  *
  * @param array $details
- *   Relevant details for git subtree add command:
+ *   Relevant details for git subtree pull command from config file:
  *    - uri
  *    - branch
  *    - squash
  *    - message
+ *    - pull, bool
+ *    - merge, bool
  *
  * @return string|bool
  *   Return command to be executed. False for don't do anything.
  */
 function _site_make_subtree_pull($directory, $details) {
+  // Check to see if pulls are disabled (e.g. for local development).
+  if (isset($details['pull']) && $details['pull'] == FALSE) {
+    drush_log(dt('git subtree pull is disabled for !project', array('!project' => $directory)), 'ok');
+    return '';
+  }
+
+  drush_log(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
+
+  // Get params for git subtree pull command.
   $prefix = _site_make_get_prefix($directory);
   $uri = _site_make_get_uri($details);
   $branch = _site_make_get_branch($details);
@@ -515,16 +526,30 @@ function _site_make_get_tag($project_name, $project_info) {
  * @param string $directory
  *   Name of directory containing subtree.
  *
+ * @param array $details
+ *   Relevant details for git subtree merge command from config file.
+ *
  * @param string $id
  *   Commit id
  *
  * @return string
  *   Git subtree merge command to be executed.
  */
-function _site_make_subtree_merge($directory, $id) {
+function _site_make_subtree_merge($directory, $details, $id) {
+  // Check to see if merges are disabled (e.g. for local development).
+  if (isset($details['merge']) && $details['merge'] == FALSE) {
+    drush_log(dt('git subtree merge is disabled for !project', array('!project' => $directory)), 'ok');
+    return '';
+  }
+
+  drush_log(dt('Preparing to merge !subtree_name subtree to id: !id', array('!subtree_name' => $subtree_name, '!id' => $id)), 'ok');
+
+  // Get params for subtree merge command.
   $prefix = _site_make_get_prefix($directory);
   $message = _site_make_add_subtree_commit_message($details);
+  // Build command.
   $command = "git subtree merge --squash --prefix={$prefix} {$message} {$id}";
+
   return $command;
 }
 
@@ -627,13 +652,11 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
   }
   else {
     // Otherwise, pull in any updates.
-    drush_print(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
     $commands[] = _site_make_subtree_pull($subtree_name, $details);
   }
 
   if ($id = _site_make_get_id($subtree_name, $project_info)) {
-    drush_print(dt('Preparing to merge !subtree_name subtree to id: !id', array('!subtree_name' => $subtree_name, '!id' => $id)), 'status');
-    $commands[] = _site_make_subtree_merge($subtree_name, $id);
+    $commands[] = _site_make_subtree_merge($subtree_name, $details, $id);
   }
   else {
     // @todo Detect latest recommended release on d.o when no version is

@@ -21,7 +21,7 @@ subtrees:
     # If squash is set to false, the whole external git history will be pulled
     # into your site repo. (This can look messy and confusing to people who
     # don't understand what they're looking at.)
-    squash: true
+    squash: TRUE
     # Include the message below with any git subtree commits.
     # It's not obvious form the commit history where a subtree is pulled in
     # from. It can be convienent to provide this info as a part of your commit
@@ -31,7 +31,7 @@ subtrees:
     path: docroot/sites/all/modules/contrib/my_module
     uri: 'http://git.drupal.org/project/my_module.git'
     branch: 7.x-1.x
-    squash: true
+    squash: TRUE
     message: 'my_module subtree added/updated from http://git.drupal.org/project/my_module.git'
 
 # Custom commands. These are run after subtrees are updated and after the drush make
