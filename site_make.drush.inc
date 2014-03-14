@@ -383,7 +383,7 @@ function _site_make_subtree_pull($directory, $details) {
     return '';
   }
 
-  drush_log(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
+  drush_log(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $directory)), 'ok');
 
   // Get params for git subtree pull command.
   $prefix = _site_make_get_prefix($directory);
@@ -542,7 +542,7 @@ function _site_make_subtree_merge($directory, $details, $id) {
     return '';
   }
 
-  drush_log(dt('Preparing to merge !subtree_name subtree to id: !id', array('!subtree_name' => $subtree_name, '!id' => $id)), 'ok');
+  drush_log(dt('Preparing to merge !subtree_name subtree to id: !id', array('!subtree_name' => $directory, '!id' => $id)), 'ok');
 
   // Get params for subtree merge command.
   $prefix = _site_make_get_prefix($directory);
@@ -645,18 +645,20 @@ function _site_make_prep_projects_directory() {
 function _site_make_get_subtree_commands($subtree_name, $details, $project_info) {
   $commands = array();
 
-  if ($add_subtree = _site_make_subtree_add($subtree_name, $details)) {
+  if ($subtree_add = _site_make_subtree_add($subtree_name, $details)) {
     // Add git subtree if it doesn't already exist.
     drush_print(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
-    $commands[] = $add_subtree;
+    $commands[] = $subtree_add;
   }
-  else {
+  elseif ($subtree_pull = _site_make_subtree_pull($subtree_name, $details)) {
     // Otherwise, pull in any updates.
-    $commands[] = _site_make_subtree_pull($subtree_name, $details);
+    $commands[] = $subtree_pull;
   }
-
+  // Use git subtree merge to check out a particular version of a project.
   if ($id = _site_make_get_id($subtree_name, $project_info)) {
-    $commands[] = _site_make_subtree_merge($subtree_name, $details, $id);
+    if ($subtree_merge = _site_make_subtree_merge($subtree_name, $details, $id)) {
+      $commands[] = $subtree_merge;
+    }
   }
   else {
     // @todo Detect latest recommended release on d.o when no version is
