@@ -29,6 +29,12 @@ function site_make_drush_command() {
       'show-config' => array(
         'description' => 'Print $config array from mysite.config.inc. (Helpful for development.)',
       ),
+      'no-commit' => array(
+        'description' => 'Do not commit changes. Note: To skip subtree add, pull, or merge use no-subtree-updates.',
+      ),
+      'no-subtree-updates' => array(
+        'description' => 'Do not commit changes. NOTE: ',
+      ),
       'message' => array(
         'description' => 'Message to include at the beginning of any new commits.',
       ),
@@ -153,7 +159,13 @@ function drush_site_make($config_file = '') {
       // Get project info from make file.
       $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
       // Get subtree commands.
-      $subtree_commands = _site_make_get_subtree_commands($subtree_name, $details, $project_info);
+      $subtree_commands = array();
+      if (!drush_get_option('no-subtree-updates', FALSE)) {
+        $subtree_commands = _site_make_get_subtree_commands($subtree_name, $details, $project_info);
+      }
+      else {
+        drush_log(dt('Skipping git subtree updates.'), 'ok');
+      }
       // Remove files checked out by drush. Add symlink pointing to your local
       // subtree.
       drush_print(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'status');
@@ -192,8 +204,10 @@ function drush_site_make($config_file = '') {
   }
 
   // Commit.
-  $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush site-make.');
-  $commands[] = _site_make_commit($message);
+  if (!drush_get_option('no-commit', FALSE)) {
+    $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush site-make.');
+    $commands[] = _site_make_commit($message);
+  }
 
   // Execute commands.
   foreach ($commands as $command) {
@@ -601,6 +615,10 @@ function _site_make_subtree_add_symlink($name, $path) {
  *   Commit command.
  */
 function _site_make_commit($message) {
+  if (drush_get_option('no-commit')) {
+    drush_log(dt('Skipping git commit.'), 'ok');
+    return '';
+  }
   // Add any new files added to the repo.
   $command = "git add . ; git commit -am '{$message}';";
   return $command;
