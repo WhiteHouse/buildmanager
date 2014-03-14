@@ -168,7 +168,7 @@ function drush_site_make($config_file = '') {
       }
       // Remove files checked out by drush. Add symlink pointing to your local
       // subtree.
-      drush_print(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'status');
+      drush_log(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'ok');
       $symlink_commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
       // Add subtree commands to the beginning of the $commands array, to be
       // executed before drush make.
@@ -641,7 +641,7 @@ function _site_make_prep_projects_directory() {
   }
 
   if ($success) {
-    drush_print('A projects directory has been created at the top of your git repo. Git subtrees will be added there.');
+    drush_log(dt('A projects directory has been created at the top of your git repo. Git subtrees will be added there.'), 'ok');
   }
 }
 
@@ -665,7 +665,7 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
 
   if ($subtree_add = _site_make_subtree_add($subtree_name, $details)) {
     // Add git subtree if it doesn't already exist.
-    drush_print(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'status');
+    drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
     $commands[] = $subtree_add;
   }
   elseif ($subtree_pull = _site_make_subtree_pull($subtree_name, $details)) {
