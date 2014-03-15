@@ -20,7 +20,8 @@ function site_make_drush_command() {
   $items['site-make'] = array(
     'description' => "Wrapper around drush make for (re)building site repos.",
     'arguments' => array(
-      'config' => 'path/to/site-make.config.inc',
+      // @todo Make optional. Detect config. Prompt for selection if many found.
+      'config' => 'path/to/site_make.config.yml',
     ),
     'options' => array(
       'show-info' => array(
@@ -57,6 +58,20 @@ function site_make_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+  $items['site-make-get-tags'] = array(
+    'description' => "Get a list of tagged releases for a subtree project.",
+    'arguments' => array(
+      // @todo Make optional. Detect config. Prompt for selection if many found.
+      'config' => 'path/to/site_make.config.yml',
+      'project_name' => '',
+    ),
+    'examples' => array(
+      'drush site-make-get-tags my_project' => '',
+    ),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
   $items['site-make-setup-repo'] = array(
 
     // TODO
@@ -83,6 +98,25 @@ function site_make_drush_help($section) {
     case 'drush:site-make':
       return dt("@todo");
 
+  }
+}
+
+/**
+ * Implements hook_drush_command().
+ */
+function drush_site_make_get_tags($config_file, $subtree_name) {
+  // @todo Make config_file an optional param. Find them. Prompt if many found.
+  $config = _site_make_get_config($config_file);
+  if (!$details = $config['subtrees'][$subtree_name]) {
+    drush_set_error(dt('No subtree config available for !subtree in !config_file'),
+      array('!subtree' => $subtree_name, '!config_file' => $config_file));
+  }
+
+  // Look up tags from remote specified in $details.
+  $tags = site_make_list_remote_tags($subtree_name, $details);
+
+  foreach ($tags as $tag => $id) {
+    drush_print("{$tag}\t{$id}");
   }
 }
 
