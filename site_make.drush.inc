@@ -20,8 +20,7 @@ function site_make_drush_command() {
   $items['site-make'] = array(
     'description' => "Wrapper around drush make for (re)building site repos.",
     'arguments' => array(
-      // @todo Make optional. Detect config. Prompt for selection if many found.
-      'config' => 'path/to/site_make.config.yml',
+      'config' => '(Optional) path/to/site_make.config.yml',
     ),
     'options' => array(
       'show-info' => array(
@@ -48,10 +47,10 @@ function site_make_drush_command() {
       ),
     ),
     'examples' => array(
-      'drush site-make mysite.config.inc' => '',
-      'drush mks mysite.config.inc --show-info' => '',
-      'drush mks mysite.config.inc --message="Rebuild with example_distro release 7.x-1.5"' => '',
-      'drush mks mysite.config.inc --re-add=example1,example2,exampleN' => '',
+      'drush site-make' => '',
+      'drush mks --show-info' => '',
+      'drush mks --message="Rebuild with example_distro release 7.x-1.5"' => '',
+      'drush mks ./mysite.config.inc --re-add=example1,example2,exampleN' => '',
     ),
     'aliases' => array('mks'),
     // No bootstrap at all.
@@ -61,9 +60,8 @@ function site_make_drush_command() {
   $items['site-make-get-tags'] = array(
     'description' => "Get a list of tagged releases for a subtree project.",
     'arguments' => array(
-      // @todo Make optional. Detect config. Prompt for selection if many found.
-      'config' => 'path/to/site_make.config.yml',
       'project_name' => '',
+      'config' => '(Optional) path/to/site_make.config.yml',
     ),
     'examples' => array(
       'drush site-make-get-tags my_project' => '',
@@ -71,6 +69,17 @@ function site_make_drush_command() {
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
+
+  /*
+  $items['drsubtree-checkout'] = array(
+  );
+  $items['drsubtree-pull'] = array(
+  );
+  $items['drsubtree-push'] = array(
+  );
+  $items['drsubtree-add'] = array(
+  );
+  // */
 
   $items['site-make-setup-repo'] = array(
 
@@ -104,8 +113,11 @@ function site_make_drush_help($section) {
 /**
  * Implements hook_drush_command().
  */
-function drush_site_make_get_tags($config_file, $subtree_name) {
-  // @todo Make config_file an optional param. Find them. Prompt if many found.
+function drush_site_make_get_tags($subtree_name, $config_file = '') {
+  // Get config_file.
+  if (!$config_file) {
+    $config_file = site_make_get_config_file();
+  }
   $config = _site_make_get_config($config_file);
   if (!$details = $config['subtrees'][$subtree_name]) {
     drush_set_error(dt('No subtree config available for !subtree in !config_file'),
@@ -123,7 +135,7 @@ function drush_site_make_get_tags($config_file, $subtree_name) {
 /**
  * Implements drush_hook_COMMAND_validate().
  */
-function drush_site_make_validate($config_file) {
+function drush_site_make_validate() {
   $is_valid = TRUE;
 
   // TODO Check drush version. Currently, this requires master branch with
@@ -138,7 +150,6 @@ function drush_site_make_validate($config_file) {
   // TODO Check for subtrees. Give user message if not using.
   // TODO Check for commands to shell_exec. Give user message if not using.
   // Confirm we have a config file.
-  $is_valid = (file_exists($config_file)) ? TRUE : drush_set_error('site_make', dt('Could not find config file, !here'), array('!here' => $config_file));
 
   return $is_valid;
 }
@@ -156,9 +167,10 @@ function drush_site_make($config_file = '') {
   // Build up array of commands to be executed in order.
   $commands = array();
 
-  // @todo Make $config_file optional. Scan directory for site_make.*.yml. If
-  // more than one file exists, prompt user to select one.
-  // Load config file, providing $conf variable.
+  // Get config file.
+  if (!$config_file) {
+    $config_file = site_make_get_config_file();
+  }
   drush_log(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'ok');
   $config = _site_make_get_config($config_file);
 
@@ -777,4 +789,39 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
   }
 
   return $commands;
+}
+
+/**
+ * Scan for config file. Prompt for selection if more than one found.
+ *
+ * @return string
+ *   File name.
+ */
+function site_make_get_config_file() {
+  $config_files = array();
+
+  // Scan directory for config files like site_make.*.
+  exec('pwd', $output, $exit_code);
+  $directory = $output[0];
+  foreach (drush_scan_directory($directory, '/.*/', array(), 0, FALSE) as $file) {
+    $len = strlen('site_make');
+    if (substr($file->basename, 0, $len) == 'site_make') {
+      $config_files[$file->basename] = $file->basename;
+    }
+  }
+
+  if (count($config_files) < 1) {
+    // No config found. Error.
+    drush_return_error(dt('No config file found. See site_make/README.md.'));
+  }
+  elseif (count($config_files) > 1) {
+    // If more than one found, prompt for input.
+    $config_file = drush_choice($config_files, dt('Select a config file to use:'));
+  }
+  else {
+    // Only one config file fount.
+    $config_file = $config_files[0];
+  }
+
+  return $config_file;
 }
