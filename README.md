@@ -51,15 +51,6 @@ Usage
      downloads a project with its own make file, drush make will NOT
      automatically build the stuff specified by that make file.)
 
-     For projects being included in your local repo as subtrees, your make file
-     must include a "revision" (commit ID) to specify a version number.
-
-     You can easily add/override a revision into a make file missing a revision
-     ID like this (imagine these two lines are the contents of your simple build.make):
-
-       includes[base] = projects/example_distro/build-example-distro.make
-       projects[my_project][download][revision] = abc1234
-
      If your build.make includes a makefile from a git subtree, add it to your
      repo like this:
 

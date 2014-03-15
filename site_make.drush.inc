@@ -463,7 +463,70 @@ function _site_make_get_branch($details) {
 }
 
 /**
- * Get a commit ID ("revision") from a drush make file.
+ * Get a commit ID ("revision") from a drush make file info.
+ *
+ * @param string $project_name
+ *   Name of project (module, profile, theme, library).
+ *
+ * @param array $project_info
+ *   Project info array from make files.
+ *
+ * @return string|bool
+ *   Project revision (commit) id specified in make file. False if unavailable.
+ */
+function _site_make_get_id_from_make_info($project_name, $project_info) {
+  $id = (isset($project_info['download']['revision'])) ? $project_info['download']['revision'] : FALSE;
+  return $id;
+}
+
+/**
+ * Retrieve list of tags and corresponding commit IDs from remote repository.
+ *
+ * @param string $project_name
+ *   Name of project (module, profile, theme, library).
+ *
+ * @param array $details
+ *   From site_make config.
+ *
+ * @return array|bool
+ *   Commit IDs keyed by tag name. False for failure.
+ */
+function site_make_list_remote_tags($project_name, $details) {
+  // Get a list of commit IDs and corresponding tags. A successful request
+  // returns something like this:
+  // 516726690a5f3a15ccf8d7ffccd135db4375ad10  refs/tags/7.x-1.0-rc1
+  // e214ea5b94f345b66f302d0d4aae232b4128c1e3  refs/tags/7.x-1.0-rc2
+  // 8f61c66e5f55e72a35f4a1b8f4eee93a428a03ac  refs/tags/7.x-1.0-rc3
+  $command = "git ls-remote --tags {$details['uri']}";
+  // Each line of output is stored in $output array.
+  // $exit_code is 0 for success, anything else for failure.
+  exec($command, $output, $exit_code);
+
+  // Handle failure.
+  if ($exit_code !== 0) {
+    return drush_set_error('site_make', dt("Request for remote tag list failed: !command", array('!command' => $command)));
+  }
+
+  // Parse result.
+  $tags = array();
+  foreach ($output as $line) {
+    // Example line: 8f61c66e5f55e72a35f4a1b8f4eee93a428a03ac  refs/tags/7.x-1.0
+    $parts = explode("\t", $line);
+    if (count($parts) < 2) {
+      // Skip empty lines that sneak in.
+      continue;
+    }
+    $pos = strlen('refs/tags/');
+    $tag = substr($parts[1], $pos);
+    $id = $parts[0];
+    $tags[$tag] = $id;
+  }
+
+  return $tags;
+}
+
+/**
+ * Get tag/version for a project in a make file.
  *
  * @param string $project_name
  *   Name of project (module, profile, theme, library).
@@ -472,49 +535,9 @@ function _site_make_get_branch($details) {
  *   Project info array from make files.
  *
  * @return string
- *   Project revision (commit) id specified in make file. False if unavailable.
+ *   Project version number specified in make file. Empty if unavailable.
  */
-function _site_make_get_id($project_name, $project_info) {
-  $id = (isset($project_info['download']['revision'])) ? $project_info['download']['revision'] : FALSE;
-
-  if (!$id) {
-    // If no revision is specified in make file, figure out if this is
-    // intentional (someone WANTS to build at the tip of a branch) versus
-    // accidental (someone things they're specifying the version a different
-    // way).
-    if (isset($project_info['version'])) {
-      $tag = $project_info['version'];
-    }
-    elseif (isset($project_info['download']['tag'])) {
-      $tag = $project_info['download']['tag'];
-    }
-    // If we found a tag, report an error. Presumably, they don't want to just
-    // checkout the tip of the project's branch.
-    if ($tag) {
-      return drush_set_error('site_make', dt("Commit ID (revision) unavailable for !name.\nPlease add a line like this to your make file to tell site-make what commit id to check out for version !tag:\n\tprojects[!name][download][revision] = abc1234", array('!name' => $project_name, '!tag' => $tag)));
-    }
-
-  }
-
-  return $id;
-}
-
-/**
- * Get tag/version for a project in a make file.
- *
- * NOTE: This can be handy. But there's no way to get the corresponding commit
- * ID for an included subtree.
- *
- * @param string $project_name
- *   Name of project (module, profile, theme, library).
- *
- * @param array $project_info
- *   Project info array from make files.
- *
- * @return float|bool
- *   Project version number specified in make file. False if unavailable.
- */
-function _site_make_get_tag($project_name, $project_info) {
+function _site_make_get_tag_from_make_info($project_name, $project_info) {
   $tag = '';
 
   if (isset($project_info['version'])) {
@@ -522,9 +545,6 @@ function _site_make_get_tag($project_name, $project_info) {
   }
   elseif (isset($project_info['download']['tag'])) {
     $tag = $project_info['download']['tag'];
-  }
-  elseif (isset($project_info['download']['revision'])) {
-    $tag = $project_info['download']['revision'];
   }
 
   return $tag;
@@ -546,17 +566,27 @@ function _site_make_get_tag($project_name, $project_info) {
  * @param string $id
  *   Commit id
  *
+ * @param string $tag
+ *   (Optional) tag from make file, if revision was not explicitly designated.
+ *
  * @return string
  *   Git subtree merge command to be executed.
  */
-function _site_make_subtree_merge($directory, $details, $id) {
+function _site_make_subtree_merge($directory, $details, $id, $tag = '') {
   // Check to see if merges are disabled (e.g. for local development).
   if (isset($details['merge']) && $details['merge'] == FALSE) {
     drush_log(dt('git subtree merge is disabled for !project', array('!project' => $directory)), 'ok');
     return '';
   }
 
-  drush_log(dt('Preparing to merge !subtree_name subtree to id: !id', array('!subtree_name' => $directory, '!id' => $id)), 'ok');
+  if ($tag) {
+    drush_log(dt('Preparing to merge !subtree_name subtree to id (tag: !tag): !id',
+      array('!subtree_name' => $directory, '!id' => $id, '!tag' => $tag)), 'ok');
+  }
+  else {
+    drush_log(dt('Preparing to merge !subtree_name subtree to id: !id',
+       array('!subtree_name' => $directory, '!id' => $id)), 'ok');
+  }
 
   // Get params for subtree merge command.
   $prefix = _site_make_get_prefix($directory);
@@ -663,18 +693,45 @@ function _site_make_prep_projects_directory() {
 function _site_make_get_subtree_commands($subtree_name, $details, $project_info) {
   $commands = array();
 
+  // Add git subtree if it doesn't already exist.
   if ($subtree_add = _site_make_subtree_add($subtree_name, $details)) {
-    // Add git subtree if it doesn't already exist.
     drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
     $commands[] = $subtree_add;
   }
+  // Otherwise, pull in any updates.
   elseif ($subtree_pull = _site_make_subtree_pull($subtree_name, $details)) {
-    // Otherwise, pull in any updates.
     $commands[] = $subtree_pull;
   }
-  // Use git subtree merge to check out a particular version of a project.
-  if ($id = _site_make_get_id($subtree_name, $project_info)) {
-    if ($subtree_merge = _site_make_subtree_merge($subtree_name, $details, $id)) {
+
+  // Use git subtree merge to check out a particular version of a project. First
+  // get the git commit ID to merge to.
+  $id = _site_make_get_id_from_make_info($subtree_name, $project_info);
+  if (!$id) {
+    // If no commit ID was specified in make file(s), check for tag specified in
+    // make file, then try looking corresponding ID using remote list of tags.
+    $tag = _site_make_get_tag_from_make_info($subtree_name, $project_info);
+    $tags = site_make_list_remote_tags($subtree_name, $details);
+    if (!$tag) {
+      // Make files do not specify any tag for this project.
+      return drush_set_error('site_make', dt("No tag or commit ID available for !name.", array('!name' => $project_name)));
+    }
+    elseif (!$tags) {
+      // Attempt to retrieved tags from remote failed.
+      return drush_set_error('site_make', dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
+        array(
+          '!name' => $subtree_name,
+          '!remote' => $details['uri'],
+          '!tag' => $tag)
+      ));
+    }
+    else {
+      // Success!
+      $id = $tags[$tag];
+    }
+  }
+
+  if ($id) {
+    if ($subtree_merge = _site_make_subtree_merge($subtree_name, $details, $id, $tag)) {
       $commands[] = $subtree_merge;
     }
   }
@@ -682,7 +739,7 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
     // @todo Detect latest recommended release on d.o when no version is
     // specified. Consider checking that out to better match standard make file
     // behavior?
-    drush_log(dt("No 'revision' specified for !project in makefile(s). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
+    drush_log(dt("No commit ID specified for !project (if a tag was specified in a make file, the cooresponding commit ID could not be retrieved). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
   }
 
   return $commands;
