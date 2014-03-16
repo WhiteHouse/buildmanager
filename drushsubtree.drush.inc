@@ -820,7 +820,7 @@ function drushsubtree_get_config_file() {
   }
   else {
     // Only one config file fount.
-    $config_file = $config_files[0];
+    $config_file = array_shift($config_files);
   }
 
   return $config_file;
