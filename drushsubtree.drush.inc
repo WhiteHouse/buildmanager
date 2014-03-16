@@ -17,7 +17,7 @@
 function drushsubtree_drush_command() {
   $items = array();
 
-  $items['drushsubtree'] = array(
+  $items['drushsubtree-build'] = array(
     'description' => "Wrapper around drush make for (re)building site repos.",
     'arguments' => array(
       'config' => '(Optional) path/to/drushsubtree.config.yml',
@@ -47,12 +47,13 @@ function drushsubtree_drush_command() {
       ),
     ),
     'examples' => array(
-      'drush drushsubtree' => '',
-      'drush mks --show-info' => '',
-      'drush mks --message="Rebuild with example_distro release 7.x-1.5"' => '',
-      'drush mks ./mysite.config.inc --re-add=example1,example2,exampleN' => '',
+      'drush drushsubtree-build' => '',
+      'drush subtree-build' => '',
+      'drush dsb --show-info' => '',
+      'drush dsb --message="Rebuild with example_distro release 7.x-1.5"' => '',
+      'drush dsb ./drushsubtree.config.inc --re-add=example1,example2,exampleN' => '',
     ),
-    'aliases' => array('mks'),
+    'aliases' => array('subtree-build', 'dsb'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
@@ -135,7 +136,7 @@ function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
 /**
  * Implements drush_hook_COMMAND_validate().
  */
-function drush_drushsubtree_validate() {
+function drush_drushsubtree_build_validate() {
   $is_valid = TRUE;
 
   // TODO Check drush version. Currently, this requires master branch with
@@ -163,7 +164,7 @@ function drush_drushsubtree_validate() {
  * @see drush_invoke()
  * @see drush.api.php
  */
-function drush_drushsubtree($config_file = '') {
+function drush_drushsubtree_build($config_file = '') {
   // Build up array of commands to be executed in order.
   $commands = array();
 
