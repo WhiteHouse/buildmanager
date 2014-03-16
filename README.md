@@ -1,26 +1,26 @@
-Site Make
-=========
+Drush Subtree
+===============
 
 About
 -----
 
-  This is a simple wrapper around Drush's make command. The purpose is to:
+  Drush Subtree provides a simple wrapper around Drush's make command. The purpose is to:
    
     1. Make it easy to maintain your own instance of a Drupal distro.
     2. Reduce friction for contributors.
 
-  Site Make makes it easier to maintain an instance of a distro by:
+  Drush Subtree makes it easier to maintain an instance of a distro by:
 
     - Putting all your contrib and custom projects into a build.make file. This
       way any patches you maintain can be easily documented and applied by drush
       make. 
 
     - Storing any custom shell commands in a simple config file (see
-      site_make.example.yml) to automate and standardize your site re-build
+      drushsubtree.example.yml) to automate and standardize your site re-build
       process. This makes updating to the next release as simple as running
       `drush make`.
 
-  Site Make reduces friction for contributors by storing contrib and custom
+  Drush Subtree reduces friction for contributors by storing contrib and custom
   projects you (or your team) maintain in git subtrees. This enables you to:
 
     - Do development inside whatever site repo you're actively working in,
@@ -57,8 +57,8 @@ Usage
        git subtree add --prefix=projects/example --squash --message="Added tweetserver subtree. From https://github.com/example/example.git" https://github.com/example/example.git 7.x-1.x
        
 
-  2. Set up config for your own site build in site_make.example.yml. This
-     includes (see site_make.example.yml): 
+  2. Set up config for your own site build in drushsubtree.example.yml. This
+     includes (see drushsubtree.example.yml): 
      
        - which build file to use (e.g. build.make)
        - where to build the site (e.g. docroot)
@@ -69,21 +69,21 @@ Usage
   3. Do this:
       
         cd /path/to/my-site-repo
-        drush site-make --message="Update example distro to 7.x-1.3 with drush site-make" -v
+        drush subtree --message="Update example distro to 7.x-1.3 with drush subtree" -v
 
         # If you have multiple config files, you can skip the prompt and specify
         # which config to use like this:
-        drush site-make ./site_make.mysite.yml --message="Update example distro to 7.x-1.3 with drush site-make" -v
+        drush subtree ./drushsubtree.mysite.yml --message="Update example distro to 7.x-1.3 with drush subtree" -v
 
      Helpful additional options provided by Drush:
 
         # Use --debug to see more info about what drush is doing under the hood.
-        drush site-make -v --message="Update example distro to 7.x-1.3 with drush site-make"
-        drush site-make -v --debug --message="Update example distro to 7.x-1.3 with drush site-make"
+        drush subtree -v --message="Update example distro to 7.x-1.3 with drush subtree"
+        drush subtree -v --debug --message="Update example distro to 7.x-1.3 with drush subtree"
  
         # Use --simulate to see the commands drush will execute when you run
         # site make (without actually running it).
-        drush site-make --message="Update example distro to 7.x-1.3 with drush site-make" --simulate
+        drush subtree --message="Update example distro to 7.x-1.3 with drush subtree" --simulate
 
 
 Tips for including multiple make files in your build file
@@ -109,7 +109,7 @@ Tips for including multiple make files in your build file
 
 TODO
 -----
-Currently site-make turns off recursion and expects all make files to be
+Currently subtree turns off recursion and expects all make files to be
 included in a master build.make. It could be possible to get rid of this, but
 this could create confusion and complexity. Revisit this.
 

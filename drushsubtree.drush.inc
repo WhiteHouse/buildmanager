@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * site-make drush command.
+ * drushsubtree drush command.
  *
  *  You can copy this file to any of the following
  *    1. A .drush folder in your HOME folder.
@@ -14,13 +14,13 @@
 /**
  * Implements hook_drush_command().
  */
-function site_make_drush_command() {
+function drushsubtree_drush_command() {
   $items = array();
 
-  $items['site-make'] = array(
+  $items['drushsubtree'] = array(
     'description' => "Wrapper around drush make for (re)building site repos.",
     'arguments' => array(
-      'config' => '(Optional) path/to/site_make.config.yml',
+      'config' => '(Optional) path/to/drushsubtree.config.yml',
     ),
     'options' => array(
       'show-info' => array(
@@ -47,7 +47,7 @@ function site_make_drush_command() {
       ),
     ),
     'examples' => array(
-      'drush site-make' => '',
+      'drush drushsubtree' => '',
       'drush mks --show-info' => '',
       'drush mks --message="Rebuild with example_distro release 7.x-1.5"' => '',
       'drush mks ./mysite.config.inc --re-add=example1,example2,exampleN' => '',
@@ -57,14 +57,14 @@ function site_make_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['site-make-get-tags'] = array(
+  $items['drushsubtree-get-tags'] = array(
     'description' => "Get a list of tagged releases for a subtree project.",
     'arguments' => array(
       'project_name' => '',
-      'config' => '(Optional) path/to/site_make.config.yml',
+      'config' => '(Optional) path/to/drushsubtree.config.yml',
     ),
     'examples' => array(
-      'drush site-make-get-tags my_project' => '',
+      'drush drushsubtree-get-tags my_project' => '',
     ),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
@@ -81,7 +81,7 @@ function site_make_drush_command() {
   );
   // */
 
-  $items['site-make-setup-repo'] = array(
+  $items['drushsubtree-setup-repo'] = array(
 
     // TODO
     // Prompt:
@@ -113,19 +113,19 @@ function site_make_drush_help($section) {
 /**
  * Implements hook_drush_command().
  */
-function drush_site_make_get_tags($subtree_name, $config_file = '') {
+function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
   // Get config_file.
   if (!$config_file) {
-    $config_file = site_make_get_config_file();
+    $config_file = drushsubtree_get_config_file();
   }
-  $config = _site_make_get_config($config_file);
+  $config = _drushsubtree_get_config($config_file);
   if (!$details = $config['subtrees'][$subtree_name]) {
     drush_set_error(dt('No subtree config available for !subtree in !config_file'),
       array('!subtree' => $subtree_name, '!config_file' => $config_file));
   }
 
   // Look up tags from remote specified in $details.
-  $tags = site_make_list_remote_tags($subtree_name, $details);
+  $tags = drushsubtree_list_remote_tags($subtree_name, $details);
 
   foreach ($tags as $tag => $id) {
     drush_print("{$tag}\t{$id}");
@@ -135,7 +135,7 @@ function drush_site_make_get_tags($subtree_name, $config_file = '') {
 /**
  * Implements drush_hook_COMMAND_validate().
  */
-function drush_site_make_validate() {
+function drush_drushsubtree_validate() {
   $is_valid = TRUE;
 
   // TODO Check drush version. Currently, this requires master branch with
@@ -155,7 +155,7 @@ function drush_site_make_validate() {
 }
 
 /**
- * Callback for site-make command.
+ * Callback for drushsubtree command.
  *
  * @param string $config_file
  *   path/to/config/file providing $config info
@@ -163,21 +163,21 @@ function drush_site_make_validate() {
  * @see drush_invoke()
  * @see drush.api.php
  */
-function drush_site_make($config_file = '') {
+function drush_drushsubtree($config_file = '') {
   // Build up array of commands to be executed in order.
   $commands = array();
 
   // Get config file.
   if (!$config_file) {
-    $config_file = site_make_get_config_file();
+    $config_file = drushsubtree_get_config_file();
   }
   drush_log(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'ok');
-  $config = _site_make_get_config($config_file);
+  $config = _drushsubtree_get_config($config_file);
 
   // Assemble $info array by loading, parsing and merging make file(s).
   $build_file = $config['build_file'];
   drush_log(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'ok');
-  $info = _site_make_get_info($build_file);
+  $info = _drushsubtree_get_info($build_file);
 
   // If requested, output full build info.
   if (drush_get_option('show-info')) {
@@ -195,7 +195,7 @@ function drush_site_make($config_file = '') {
     drush_log(dt('Preparing to add/update git subtrees specified here: !config_file', array('!config_file' => $config_file)), 'ok');
 
     // Prep projects directory. All subtrees will use --prefix=projects/$name
-    _site_make_prep_projects_directory();
+    _drushsubtree_prep_projects_directory();
 
     // Hang onto symlink commands here. Add these to the $commands array after
     // drush make.
@@ -207,7 +207,7 @@ function drush_site_make($config_file = '') {
       // Get subtree commands.
       $subtree_commands = array();
       if (!drush_get_option('no-subtree-updates', FALSE)) {
-        $subtree_commands = _site_make_get_subtree_commands($subtree_name, $details, $project_info);
+        $subtree_commands = _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info);
       }
       else {
         drush_log(dt('Skipping git subtree updates.'), 'ok');
@@ -215,7 +215,7 @@ function drush_site_make($config_file = '') {
       // Remove files checked out by drush. Add symlink pointing to your local
       // subtree.
       drush_log(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'ok');
-      $symlink_commands[] = _site_make_subtree_add_symlink($subtree_name, $details['path']);
+      $symlink_commands[] = _drushsubtree_subtree_add_symlink($subtree_name, $details['path']);
       // Add subtree commands to the beginning of the $commands array, to be
       // executed before drush make.
       $commands = array_merge($commands, $subtree_commands);
@@ -251,8 +251,8 @@ function drush_site_make($config_file = '') {
 
   // Commit.
   if (!drush_get_option('no-commit', FALSE)) {
-    $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush site-make.');
-    $commands[] = _site_make_commit($message);
+    $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush drushsubtree.');
+    $commands[] = _drushsubtree_commit($message);
   }
 
   // Execute commands.
@@ -263,7 +263,7 @@ function drush_site_make($config_file = '') {
 }
 
 /**
- * Load config from config file by calling site_make_config().
+ * Load config from config file by calling drushsubtree_config().
  *
  * Helpful tip for developers: You can convert a PHP array to YAML via drush
  * like this. If you know the $config array you want, but you're not sure how to
@@ -274,7 +274,7 @@ function drush_site_make($config_file = '') {
  * @return array
  *   Return parsed YAML config as PHP array.
  */
-function _site_make_get_config($config_file) {
+function _drushsubtree_get_config($config_file) {
   if (!class_exists('Symfony\Component\Yaml\Parser')) {
     // For Drush PSR-0 and Composer information, see:
     // http://drupal.org/node/1316322.
@@ -299,20 +299,20 @@ function _site_make_get_config($config_file) {
  * @return array
  *   Assemble $info array by loading, parsing and merging make file(s).
  */
-function _site_make_get_info($file) {
+function _drushsubtree_get_info($file) {
   // Load $info from info/make file if it exists.
   if (file_exists($file)) {
     $info = make_parse_info_file($file);
   }
   else {
-    return drush_set_error('site_make', dt('Make file does not exist: !here.', array('!here' => $file)));
+    return drush_set_error('drushsubtree', dt('Make file does not exist: !here.', array('!here' => $file)));
   }
 
   // Check for included make files. If they exist, recurse.
   $merge_info = array();
   if (isset($info['includes'])) {
     foreach ($info['includes'] as $include) {
-      $more_info = _site_make_get_info($include);
+      $more_info = _drushsubtree_get_info($include);
       $merge_info = array_merge_recursive_distinct($merge_info, $more_info);
     }
   }
@@ -361,21 +361,21 @@ function &array_merge_recursive_distinct(array &$array1, &$array2 = NULL) {
  * @return string|bool
  *   Return command to be executed. False for don't do anything.
  */
-function _site_make_subtree_add($directory, $details) {
-  $prefix = _site_make_get_prefix($directory);
+function _drushsubtree_subtree_add($directory, $details) {
+  $prefix = _drushsubtree_get_prefix($directory);
 
   if (file_exists($prefix)) {
     // Subtree has already been created. Or there's a directory in our way.
     // Skip this step.
     drush_log(dt("This directory already exists: !prefix", $prefix), array('!prefix' => $prefix), 'notice');
-    drush_log(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory and re-run the site-make command.", $prefix), array('!prefix' => $prefix), 'warning');
+    drush_log(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory and re-run the drushsubtree command.", $prefix), array('!prefix' => $prefix), 'warning');
     // We're done. Return.
     return FALSE;
   }
 
   // Make sure we have minimum required $details.
-  $uri = _site_make_get_uri($details);
-  $branch = _site_make_get_branch($details);
+  $uri = _drushsubtree_get_uri($details);
+  $branch = _drushsubtree_get_branch($details);
   if (!$uri || !$branch) {
     // We're done. Return.
     return FALSE;
@@ -386,7 +386,7 @@ function _site_make_subtree_add($directory, $details) {
   $squash = ($squash_history) ? ' --squash' : '';
 
   // Add custom commit message?
-  $message = _site_make_add_subtree_commit_message($details);
+  $message = _drushsubtree_add_subtree_commit_message($details);
 
   // Build the command to add subtree for the first time.
   $command = "git subtree add --prefix={$prefix} {$squash} {$message} $uri $branch";
@@ -407,7 +407,7 @@ function _site_make_subtree_add($directory, $details) {
  *   A commit message flag to a git subtree add, pull, or merge command.
  *   Empty string if no message should be added.
  */
-function _site_make_add_subtree_commit_message($details) {
+function _drushsubtree_add_subtree_commit_message($details) {
   $drush_message = drush_get_option('message', '');
   $subtree_message = (isset($details['message'])) ? $details['message'] : '';
   if ($drush_message || $subtree_message) {
@@ -436,7 +436,7 @@ function _site_make_add_subtree_commit_message($details) {
  * @return string|bool
  *   Return command to be executed. False for don't do anything.
  */
-function _site_make_subtree_pull($directory, $details) {
+function _drushsubtree_subtree_pull($directory, $details) {
   // Check to see if pulls are disabled (e.g. for local development).
   if (isset($details['pull']) && $details['pull'] == FALSE) {
     drush_log(dt('git subtree pull is disabled for !project', array('!project' => $directory)), 'ok');
@@ -446,10 +446,10 @@ function _site_make_subtree_pull($directory, $details) {
   drush_log(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $directory)), 'ok');
 
   // Get params for git subtree pull command.
-  $prefix = _site_make_get_prefix($directory);
-  $uri = _site_make_get_uri($details);
-  $branch = _site_make_get_branch($details);
-  $message = _site_make_add_subtree_commit_message($details);
+  $prefix = _drushsubtree_get_prefix($directory);
+  $uri = _drushsubtree_get_uri($details);
+  $branch = _drushsubtree_get_branch($details);
+  $message = _drushsubtree_add_subtree_commit_message($details);
 
   // Squash commit history of subtree into a single commit?
   $squash_history = (isset($details['squash'])) ? $details['squash'] : FALSE;
@@ -469,7 +469,7 @@ function _site_make_subtree_pull($directory, $details) {
  * @return string
  *   Path to subtree from top-level of repo to be used for --prefix.
  */
-function _site_make_get_prefix($directory) {
+function _drushsubtree_get_prefix($directory) {
   return "projects/{$directory}";
 }
 
@@ -482,9 +482,9 @@ function _site_make_get_prefix($directory) {
  * @return string|bool
  *   Uri for git repo.
  */
-function _site_make_get_uri($details) {
+function _drushsubtree_get_uri($details) {
   if (!(isset($details['uri']) || !strlen($details['uri']) > 0)) {
-    return drush_set_error('site_make', dt("uri is a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
+    return drush_set_error('drushsubtree', dt("uri is a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
   }
   else {
     return $details['uri'];
@@ -492,7 +492,7 @@ function _site_make_get_uri($details) {
 }
 
 /**
- * Get subtree branch from site-make project details included in config file.
+ * Get subtree branch from drushsubtree project details included in config file.
  *
  * @param array $details
  *   Relevant details for git subtree add command:
@@ -500,9 +500,9 @@ function _site_make_get_uri($details) {
  * @return string|bool
  *   Branch name.
  */
-function _site_make_get_branch($details) {
+function _drushsubtree_get_branch($details) {
   if (!(isset($details['branch']) || !strlen($details['branch']) > 0)) {
-    return drush_set_error('site_make', dt("branchis a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
+    return drush_set_error('drushsubtree', dt("branchis a required subtree parameter for any subtree included here. Please add this to your site's config file, then try again."), 'error');
   }
 
   return $details['branch'];
@@ -520,7 +520,7 @@ function _site_make_get_branch($details) {
  * @return string|bool
  *   Project revision (commit) id specified in make file. False if unavailable.
  */
-function _site_make_get_id_from_make_info($project_name, $project_info) {
+function _drushsubtree_get_id_from_make_info($project_name, $project_info) {
   $id = (isset($project_info['download']['revision'])) ? $project_info['download']['revision'] : FALSE;
   return $id;
 }
@@ -532,12 +532,12 @@ function _site_make_get_id_from_make_info($project_name, $project_info) {
  *   Name of project (module, profile, theme, library).
  *
  * @param array $details
- *   From site_make config.
+ *   From drushsubtree config.
  *
  * @return array|bool
  *   Commit IDs keyed by tag name. False for failure.
  */
-function site_make_list_remote_tags($project_name, $details) {
+function drushsubtree_list_remote_tags($project_name, $details) {
   // Get a list of commit IDs and corresponding tags. A successful request
   // returns something like this:
   // 516726690a5f3a15ccf8d7ffccd135db4375ad10  refs/tags/7.x-1.0-rc1
@@ -550,7 +550,7 @@ function site_make_list_remote_tags($project_name, $details) {
 
   // Handle failure.
   if ($exit_code !== 0) {
-    return drush_set_error('site_make', dt("Request for remote tag list failed: !command", array('!command' => $command)));
+    return drush_set_error('drushsubtree', dt("Request for remote tag list failed: !command", array('!command' => $command)));
   }
 
   // Parse result.
@@ -583,7 +583,7 @@ function site_make_list_remote_tags($project_name, $details) {
  * @return string
  *   Project version number specified in make file. Empty if unavailable.
  */
-function _site_make_get_tag_from_make_info($project_name, $project_info) {
+function _drushsubtree_get_tag_from_make_info($project_name, $project_info) {
   $tag = '';
 
   if (isset($project_info['version'])) {
@@ -618,7 +618,7 @@ function _site_make_get_tag_from_make_info($project_name, $project_info) {
  * @return string
  *   Git subtree merge command to be executed.
  */
-function _site_make_subtree_merge($directory, $details, $id, $tag = '') {
+function _drushsubtree_subtree_merge($directory, $details, $id, $tag = '') {
   // Check to see if merges are disabled (e.g. for local development).
   if (isset($details['merge']) && $details['merge'] == FALSE) {
     drush_log(dt('git subtree merge is disabled for !project', array('!project' => $directory)), 'ok');
@@ -635,8 +635,8 @@ function _site_make_subtree_merge($directory, $details, $id, $tag = '') {
   }
 
   // Get params for subtree merge command.
-  $prefix = _site_make_get_prefix($directory);
-  $message = _site_make_add_subtree_commit_message($details);
+  $prefix = _drushsubtree_get_prefix($directory);
+  $message = _drushsubtree_add_subtree_commit_message($details);
   // Build command.
   $command = "git subtree merge --squash --prefix={$prefix} {$message} {$id}";
 
@@ -658,9 +658,9 @@ function _site_make_subtree_merge($directory, $details, $id, $tag = '') {
  * @return string
  *   Shell command for adding symlink.
  */
-function _site_make_subtree_add_symlink($name, $path) {
+function _drushsubtree_subtree_add_symlink($name, $path) {
   // Get path to subtree, relative to top-level directory.
-  $prefix = _site_make_get_prefix($name);
+  $prefix = _drushsubtree_get_prefix($name);
 
   // Get source, relative to parent directory inside docroot.
   $count = count(explode('/', $path));
@@ -690,7 +690,7 @@ function _site_make_subtree_add_symlink($name, $path) {
  * @return string
  *   Commit command.
  */
-function _site_make_commit($message) {
+function _drushsubtree_commit($message) {
   if (drush_get_option('no-commit')) {
     drush_log(dt('Skipping git commit.'), 'ok');
     return '';
@@ -703,17 +703,17 @@ function _site_make_commit($message) {
 /**
  * Prep projects directory.
  */
-function _site_make_prep_projects_directory() {
+function _drushsubtree_prep_projects_directory() {
   // Before adding/pulling subtrees, make sure parent directory
   // for --prefix exists.
   if (!file_exists('projects')) {
     $success = mkdir('projects', 0777, TRUE);
     if (!$success) {
-      return drush_set_error('site_make', dt("Failed creating directory: projects"), 'error');
+      return drush_set_error('drushsubtree', dt("Failed creating directory: projects"), 'error');
     }
   }
   elseif (file_exists('projects') && !is_dir('projects')) {
-    return drush_set_error('site_make', dt("Please remove the 'projects' file. We need to create a directory with that name for your subtrees."), 'error');
+    return drush_set_error('drushsubtree', dt("Please remove the 'projects' file. We need to create a directory with that name for your subtrees."), 'error');
   }
 
   if ($success) {
@@ -736,34 +736,34 @@ function _site_make_prep_projects_directory() {
  * @return array
  *   Commands to be executed via shell_exec().
  */
-function _site_make_get_subtree_commands($subtree_name, $details, $project_info) {
+function _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info) {
   $commands = array();
 
   // Add git subtree if it doesn't already exist.
-  if ($subtree_add = _site_make_subtree_add($subtree_name, $details)) {
+  if ($subtree_add = _drushsubtree_subtree_add($subtree_name, $details)) {
     drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
     $commands[] = $subtree_add;
   }
   // Otherwise, pull in any updates.
-  elseif ($subtree_pull = _site_make_subtree_pull($subtree_name, $details)) {
+  elseif ($subtree_pull = _drushsubtree_subtree_pull($subtree_name, $details)) {
     $commands[] = $subtree_pull;
   }
 
   // Use git subtree merge to check out a particular version of a project. First
   // get the git commit ID to merge to.
-  $id = _site_make_get_id_from_make_info($subtree_name, $project_info);
+  $id = _drushsubtree_get_id_from_make_info($subtree_name, $project_info);
   if (!$id) {
     // If no commit ID was specified in make file(s), check for tag specified in
     // make file, then try looking corresponding ID using remote list of tags.
-    $tag = _site_make_get_tag_from_make_info($subtree_name, $project_info);
-    $tags = site_make_list_remote_tags($subtree_name, $details);
+    $tag = _drushsubtree_get_tag_from_make_info($subtree_name, $project_info);
+    $tags = drushsubtree_list_remote_tags($subtree_name, $details);
     if (!$tag) {
       // Make files do not specify any tag for this project.
-      return drush_set_error('site_make', dt("No tag or commit ID available for !name.", array('!name' => $project_name)));
+      return drush_set_error('drushsubtree', dt("No tag or commit ID available for !name.", array('!name' => $project_name)));
     }
     elseif (!$tags) {
       // Attempt to retrieved tags from remote failed.
-      return drush_set_error('site_make', dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
+      return drush_set_error('drushsubtree', dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
         array(
           '!name' => $subtree_name,
           '!remote' => $details['uri'],
@@ -777,7 +777,7 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
   }
 
   if ($id) {
-    if ($subtree_merge = _site_make_subtree_merge($subtree_name, $details, $id, $tag)) {
+    if ($subtree_merge = _drushsubtree_subtree_merge($subtree_name, $details, $id, $tag)) {
       $commands[] = $subtree_merge;
     }
   }
@@ -797,22 +797,22 @@ function _site_make_get_subtree_commands($subtree_name, $details, $project_info)
  * @return string
  *   File name.
  */
-function site_make_get_config_file() {
+function drushsubtree_get_config_file() {
   $config_files = array();
 
-  // Scan directory for config files like site_make.*.
+  // Scan directory for config files like drushsubtree.*.
   exec('pwd', $output, $exit_code);
   $directory = $output[0];
   foreach (drush_scan_directory($directory, '/.*/', array(), 0, FALSE) as $file) {
-    $len = strlen('site_make');
-    if (substr($file->basename, 0, $len) == 'site_make') {
+    $len = strlen('drushsubtree');
+    if (substr($file->basename, 0, $len) == 'drushsubtree') {
       $config_files[$file->basename] = $file->basename;
     }
   }
 
   if (count($config_files) < 1) {
     // No config found. Error.
-    drush_return_error(dt('No config file found. See site_make/README.md.'));
+    drush_return_error(dt('No config file found. See drushsubtree/README.md.'));
   }
   elseif (count($config_files) > 1) {
     // If more than one found, prompt for input.
