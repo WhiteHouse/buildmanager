@@ -1,0 +1,6 @@
+[ ] 1. Move build functionality into new drush extension
+[ ] 2. Add pre/post commands
+[ ] 3. Make build an array
+          file: build.make
+          target: docroot
+          options: --no-recurse
