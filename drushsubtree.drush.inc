@@ -71,19 +71,39 @@ function drushsubtree_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  /*
-  $items['drsubtree-checkout'] = array(
+  $items['drushsubtree-checkout'] = array(
+    'description' => '',
+    'arguments' => array(),
+    'examples' => array(),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
-  $items['drsubtree-pull'] = array(
+
+  $items['drushsubtree-pull'] = array(
+    'description' => '',
+    'arguments' => array(),
+    'examples' => array(),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
-  $items['drsubtree-push'] = array(
+
+  $items['drushsubtree-push'] = array(
+    'description' => '',
+    'arguments' => array(),
+    'examples' => array(),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
-  $items['drsubtree-add'] = array(
+
+  $items['drushsubtree-add'] = array(
+    'description' => '',
+    'arguments' => array(),
+    'examples' => array(),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
-  // */
 
   $items['drushsubtree-setup-repo'] = array(
-
     // TODO
     // Prompt:
     // - Create symlink-these directory
@@ -826,3 +846,11 @@ function drushsubtree_get_config_file() {
 
   return $config_file;
 }
+
+function drush_drushsubtree_checkout($project) {}
+
+function drush_drushsubtree_pull($project) {}
+
+function drush_drushsubtree_push($project) {}
+
+function drush_drushsubtree_add($project) {}
