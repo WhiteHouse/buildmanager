@@ -1,4 +1,5 @@
 <?php
+require_once('drushsubtree.subtreecommander.class.inc');
 /**
  * @file
  * drushsubtree drush command.
@@ -17,20 +18,29 @@
 function drushsubtree_drush_command() {
   $items = array();
 
-  $items['drushsubtree-get-tags'] = array(
-    'description' => "Get a list of tagged releases for a subtree project.",
+  $items['drushsubtree-add'] = array(
+    'description' => '',
     'arguments' => array(
-      'project_name' => '',
-      'config' => '(Optional) path/to/drushsubtree.config.yml',
+      'project' => '(Optional) Subtree defined in buildmanager config.',
+    ),
+    'options' => array(
+      'simulate' => array(
+        'description' => 'Output commands to be executed for examination, but do not actually execute them.',
+      ),
+      'message' => array(
+        'description' => 'Message to include at the beginning of new commits.',
+      ),
     ),
     'examples' => array(
-      'drush drushsubtree-get-tags my_project' => '',
+      'drush subtree-add' => '',
     ),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'aliases' => array('subtree-add'),
   );
 
-  $items['drushsubtree-checkout'] = array(
+ /*
+  $items['drushsubtree-pull'] = array(
     'description' => '',
     'arguments' => array(),
     'examples' => array(),
@@ -38,7 +48,7 @@ function drushsubtree_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-pull'] = array(
+  $items['drushsubtree-merge'] = array(
     'description' => '',
     'arguments' => array(),
     'examples' => array(),
@@ -54,14 +64,27 @@ function drushsubtree_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-add'] = array(
+  $items['drushsubtree-checkout'] = array(
     'description' => '',
     'arguments' => array(),
     'examples' => array(),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
+  // */
 
+  $items['drushsubtree-get-tags'] = array(
+    'description' => "Get a list of tagged releases for a subtree project.",
+    'arguments' => array(
+      'project_name' => '',
+      'config' => '(Optional) path/to/drushsubtree.config.yml',
+    ),
+    'examples' => array(
+      'drush drushsubtree-get-tags my_project' => '',
+    ),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
   $items['drushsubtree-setup-repo'] = array(
     // TODO
     // Prompt:
@@ -91,7 +114,7 @@ function site_make_drush_help($section) {
 }
 
 /**
- * Implements hook_drush_command().
+ * Callback for drushsubtree-get-tags().
  */
 function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
   // Get config_file.
@@ -112,54 +135,6 @@ function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
   }
 }
 
-/**
- * Generate git subtree add command to be run from top-level of repo.
- *
- * @param string $directory
- *   Directory name where subtree should live
- *
- * @param array $details
- *   Relevant details for git subtree add command:
- *    - uri
- *    - branch
- *    - squash
- *    - message
- *
- * @return string|bool
- *   Return command to be executed. False for don't do anything.
- */
-function _drushsubtree_subtree_add($directory, $details) {
-  $prefix = _drushsubtree_get_prefix($directory);
-
-  if (file_exists($prefix)) {
-    // Subtree has already been created. Or there's a directory in our way.
-    // Skip this step.
-    drush_log(dt("This directory already exists: !prefix", $prefix), array('!prefix' => $prefix), 'notice');
-    drush_log(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory and re-run the drushsubtree command.", $prefix), array('!prefix' => $prefix), 'warning');
-    // We're done. Return.
-    return FALSE;
-  }
-
-  // Make sure we have minimum required $details.
-  $uri = _drushsubtree_get_uri($details);
-  $branch = _drushsubtree_get_branch($details);
-  if (!$uri || !$branch) {
-    // We're done. Return.
-    return FALSE;
-  }
-
-  // Squash commit history of subtree into a single commit?
-  $squash_history = (isset($details['squash'])) ? $details['squash'] : FALSE;
-  $squash = ($squash_history) ? ' --squash' : '';
-
-  // Add custom commit message?
-  $message = _drushsubtree_add_subtree_commit_message($details);
-
-  // Build the command to add subtree for the first time.
-  $command = "git subtree add --prefix={$prefix} {$squash} {$message} $uri $branch";
-
-  return $command;
-}
 
 /**
  * Get message to be included with subtree add/pull/merge commits.
@@ -167,16 +142,15 @@ function _drushsubtree_subtree_add($directory, $details) {
  * Site make config files can specify a message to be included
  * project-by-project.
  *
- * @param array $details
- *   From site make YAML config file.
+ * @param string $message
+ *   Defined in buildmanager YAML config file.
  *
  * @return string
  *   A commit message flag to a git subtree add, pull, or merge command.
  *   Empty string if no message should be added.
  */
-function _drushsubtree_add_subtree_commit_message($details) {
+function _drushsubtree_add_subtree_commit_message($subtree_message = '') {
   $drush_message = drush_get_option('message', '');
-  $subtree_message = (isset($details['message'])) ? $details['message'] : '';
   if ($drush_message || $subtree_message) {
     $custom_message = ($drush_message) ? "{$drush_message}\n\n\t{$subtree_message}" : $subtree_message;
   }
@@ -466,8 +440,10 @@ function _drushsubtree_subtree_add_symlink($name, $path) {
 function _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info) {
   $commands = array();
 
+  $subtree = new SubtreeCommander($subtree_name, $details);
+
   // Add git subtree if it doesn't already exist.
-  if ($subtree_add = _drushsubtree_subtree_add($subtree_name, $details)) {
+  if ($subtree_add = $subtree->add()) {
     drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
     $commands[] = $subtree_add;
   }
@@ -527,8 +503,6 @@ function drush_drushsubtree_pull($project) {}
 // TODO
 function drush_drushsubtree_push($project) {}
 
-// TODO
-function drush_drushsubtree_add($project) {}
 
 /**
  * Implements hook_buildmanager_build().
@@ -631,4 +605,42 @@ function drushsubtree_buildmanager_build_options() {
       'description' => '@todo Remove and re-add comma separated list of subtree(s).',
     ),
   );  
+}
+
+/**
+ * Callback for drushsubtree-add (subtree-add).
+ *
+ * @param string $name
+ *   Name of subtree.
+ */
+function drush_drushsubtree_add($name = '') {
+  if (!$name) {
+    $names = array_keys($config['subtrees']);
+    $names = array_combine($names, $names);
+    $name = drush_choice($names, dt('Select a subtree to add:'));
+  }
+
+  // Get buildmanager config.
+  $config = _drushsubtree_get_config();
+
+  $properties = $config['subtrees'][$name];
+  $subtree = new SubtreeCommander($name, $properties);
+
+  drush_shell_exec($subtree->add());
+}
+
+/**
+ * Find, parse, return buildmanager config.
+ *
+ * @return array
+ *   Parsed buildmanager.config.yml.
+ */
+function _drushsubtree_get_config() {
+  if (!function_exists('buildmanager_get_config_file')) {
+    return drush_set_error('drushsubtree', dt('Missing Drush dependency: Build Manager'));  
+  }
+  $config_file = buildmanager_get_config_file();
+  $config = _buildmanager_get_config($config_file);
+
+  return $config; 
 }
