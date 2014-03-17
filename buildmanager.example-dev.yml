@@ -34,7 +34,7 @@ subtrees:
     path: docroot/sites/all/modules/contrib/my_module
     pull: FALSE
     merge: FALSE
-commands:
+postbuild-commands:
   - 'rm -rf docroot/sites/default; cd docroot/sites; ln -s ../../symlink-these/default default'
   - 'rm -rf docroot/.htaccess; cd docroot/; ln -s ../symlink-these/.htaccess .htaccess'
   - 'rm -rf docroot/robots.txt; cd docroot/; ln -s ../symlink-these/robots.txt robots.txt'

@@ -490,12 +490,12 @@ function _drushsubtree_get_subtree_commands($subtree_name, $details, $project_in
     }
     elseif (!$tags) {
       // Attempt to retrieved tags from remote failed.
-      return drush_set_error('drushsubtree', dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
+      drush_log(dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
         array(
           '!name' => $subtree_name,
           '!remote' => $details['uri'],
           '!tag' => $tag)
-      ));
+        ), 'warning');
     }
     else {
       // Success!
@@ -518,11 +518,117 @@ function _drushsubtree_get_subtree_commands($subtree_name, $details, $project_in
   return $commands;
 }
 
-
+// TODO
 function drush_drushsubtree_checkout($project) {}
 
+// TODO
 function drush_drushsubtree_pull($project) {}
 
+// TODO
 function drush_drushsubtree_push($project) {}
 
+// TODO
 function drush_drushsubtree_add($project) {}
+
+/**
+ * Implements hook_buildmanager_build().
+ *
+ * @param array $info
+ *   Info from drush make build file.
+ *
+ * @param array $config
+ *   Configuration defined in buildmanager.config.yml
+ *
+ * @param obj $commands
+ *   Commands to be executed by buildmanager.
+ *   - precommands (array), commands to execute before `drush make` (re)build
+ *   - postcommands (array), commands to execute after `drush make` (re)build
+ */
+function drushsubtree_buildmanager_build($info, $config, $commands) {
+  // Check for subtrees in $config.
+  if (!isset($config['subtrees'])) {
+    // This project has no subtrees. Our work here is done.
+    return;
+  }
+
+  // @todo Check if there are uncommitted changes locally. Exit if there are.
+  // Otherwise, subtree add/pull won't work.
+  // If there are subtrees in the config file, get commands for adding/updating
+  // subtrees.
+
+  drush_log(dt('Preparing to add/update git subtrees.'), 'ok');
+
+  // Prep projects directory. All subtrees will use --prefix=projects/$name
+  _drushsubtree_prep_projects_directory();
+
+  // Get subtree commands to be executed before running `drush make`.
+  $subtree_commands = array();
+
+  // Get symlink commands to be run after `drush make`.
+  $symlink_commands = array();
+
+  foreach ($config['subtrees'] as $subtree_name => $details) {
+    // Get project info from make file.
+    $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
+    if (!drush_get_option('no-subtree-updates', FALSE)) {
+      $subtree_commands = _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info);
+    }
+    else {
+      drush_log(dt('Skipping git subtree updates.'), 'ok');
+    }
+    // Remove files checked out by drush. Add symlink pointing to your local
+    // subtree.
+    drush_log(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'ok');
+    $symlink_commands[] = _drushsubtree_subtree_add_symlink($subtree_name, $details['path']);
+  }
+
+  // Add subtree commands to the beginning of the $commands array, to be
+  // executed before drush make. It's important these run before drush make for
+  // two reasons: (1) Incase a project's build file includes a make file in a
+  // subtree project. This will ensure the updated make file is included in the
+  // build. (2) This needs to run before anything else dirties the working
+  // tree (like drush make), otherwise the subtree add/pull/merge will fail.
+  $commands->prebuild = array_merge($subtree_commands, $commands->prebuild);
+
+  // Add symlink commands after drush make but before other commands, incase any
+  // custom post-build commands are committing anything. This way, projects
+  // don't get added and re-removed everytime there's a new drush make build.
+  $commands->postbuild = array_merge($symlink_commands, $commands->postbuild);
+
+}
+
+/**
+ * Prep projects directory.
+ */
+function _drushsubtree_prep_projects_directory() {
+  // Before adding/pulling subtrees, make sure parent directory
+  // for --prefix exists.
+  if (!file_exists('projects')) {
+    $success = mkdir('projects', 0777, TRUE);
+    if (!$success) {
+      return drush_set_error('buildmanager', dt("Failed creating directory: projects"), 'error');
+    }
+  }
+  elseif (file_exists('projects') && !is_dir('projects')) {
+    return drush_set_error('buildmanager', dt("Please remove the 'projects' file. We need to create a directory with that name for your subtrees."), 'error');
+  }
+
+  if ($success) {
+    drush_log(dt('A projects directory has been created at the top of your git repo. Git subtrees will be added there.'), 'ok');
+  }
+}
+
+/**
+ * Implements hook_buildmanager_build_options();
+ */
+function drushsubtree_buildmanager_build_options() {
+  return array(
+    'no-subtree-updates' => array(
+      'description' => 'Do add/pull/merge subtrees in buildmanager config.',
+    ),
+    // @todo
+    're-add' => array(
+      'description' => '@todo Remove and re-add comma separated list of subtree(s).',
+    ),
+  );  
+}

@@ -33,18 +33,11 @@ function buildmanager_drush_command() {
       'no-commit' => array(
         'description' => 'Do not commit changes. Note: To skip subtree add, pull, or merge use no-subtree-updates.',
       ),
-      'no-subtree-updates' => array(
-        'description' => 'Do not commit changes. NOTE: ',
-      ),
       'message' => array(
         'description' => 'Message to include at the beginning of any new commits.',
       ),
       'simulate' => array(
         'description' => 'Output commands to be executed for examination, but do not actually execute them.',
-      ),
-      // @todo
-      're-add' => array(
-        'description' => '@todo Remove and re-add comma separated list of subtree(s).',
       ),
     ),
     'examples' => array(
@@ -52,11 +45,17 @@ function buildmanager_drush_command() {
       'drush bmb' => '',
       'drush bmb --show-info' => '',
       'drush bmb --message="Rebuild with example_distro release 7.x-1.5"' => '',
-      'drush bmb ./buildmanager.config.inc --re-add=example1,example2,exampleN' => '',
     ),
     'aliases' => array('bmb'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
+  // Add options provided by Drush extensions extending buildmanager.
+  $build_options = drush_command_invoke_all('buildmanager_build_options');
+  $items['buildmanager-build']['options'] = array_merge(
+    $items['buildmanager-build']['options'],
+    $build_options
   );
 
   return $items;
@@ -72,8 +71,11 @@ function buildmanager_drush_command() {
  * @see drush.api.php
  */
 function drush_buildmanager_build($config_file = '') {
-  // Build up array of commands to be executed in order.
-  $commands = array();
+  // Build up arrays of prebuild and postbuild commands to be executed in order
+  // before and after running `drush make`.
+  $commands = new stdClass();
+  $commands->prebuild = array();
+  $commands->postbuild = array();
 
   // Get config file.
   if (!$config_file) {
@@ -93,82 +95,53 @@ function drush_buildmanager_build($config_file = '') {
     drush_print_r($info);
   }
 
-  // Add/update git subtrees.
-  // @todo Check if there are uncommitted changes locally. Exit if there are.
-  // Otherwise, subtree add/pull won't work.
-  // If there are subtrees in the config file, get commands for adding/updating
-  // subtrees.
-  if (isset($config['subtrees'])) {
-
-    drush_log(dt('Preparing to add/update git subtrees specified here: !config_file', array('!config_file' => $config_file)), 'ok');
-
-    // Prep projects directory. All subtrees will use --prefix=projects/$name
-    _buildmanager_prep_projects_directory();
-
-    // Hang onto symlink commands here. Add these to the $commands array after
-    // drush make.
-    $symlink_commands = array();
-
-    foreach ($config['subtrees'] as $subtree_name => $details) {
-      // Get project info from make file.
-      $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
-      // Get subtree commands.
-      $subtree_commands = array();
-      if (!drush_get_option('no-subtree-updates', FALSE)) {
-        $subtree_commands = _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info);
-      }
-      else {
-        drush_log(dt('Skipping git subtree updates.'), 'ok');
-      }
-      // Remove files checked out by drush. Add symlink pointing to your local
-      // subtree.
-      drush_log(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'ok');
-      $symlink_commands[] = _drushsubtree_subtree_add_symlink($subtree_name, $details['path']);
-      // Add subtree commands to the beginning of the $commands array, to be
-      // executed before drush make.
-      $commands = array_merge($commands, $subtree_commands);
-    }
-
+  // Add buildmanager's prebuild commands.
+  $target = $config['target'];
+  if (file_exists($target)) {
+    // Remove Drupal code base. To be rebuilt by drush make.
+    $commands->prebuild[] = "rm -rf $target";
   }
 
-  // Execute subtree commands now. This way, drush make will include info
-  // from make files updated with git subtree pulls.
-  foreach ($commands as $command) {
+  // Add custom prebuild commands from config file.
+  foreach ($config['prebuild-commands'] as $command) {
+    $commands->prebuild[] = $command;
+  }
+
+  // Add buildmanager's postbuild commands.
+  if (!drush_get_option('no-commit', FALSE)) {
+    // Commit.
+    $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush buildmanager.');
+    $commands->postbuild[] = _buildmanager_commit($message);
+  }
+
+  // Add custom postbuild commands from config file.
+  foreach ($config['postbuild-commands'] as $command) {
+    $commands->postbuild[] = $command;
+  }
+
+  // Invoke buildmanager_build. Give other modules/extensions an opportunity to
+  // examine $info and $config and add or modify $commands.
+  drush_command_invoke_all('buildmanager_build', $info, $config, $commands);
+
+  // Execute prebuild commands.
+  foreach ($commands->prebuild as $command) {
     // @todo Add error handling.
     drush_shell_exec($command);
   }
-  // Zero out $commands. Build up next array of commands to be executed.
-  $commands = array();
 
-  // Drush make.
+  // Build. (Run drush make.)
   // If target director already exists, remove it.
-  $target = $config['target'];
-  if (file_exists($target)) {
-    $commands[] = "rm -rf $target";
-  }
-  $commands[] = DRUSH_COMMAND . " make {$build_file} {$target} --no-recursion --no-gitinfofile";
+  // TODO Get build config. Use that to build this command.
+  $build_command = DRUSH_COMMAND . " make {$build_file} {$target} --no-recursion --no-gitinfofile";
+  drush_shell_exec($build_command);
 
-  // Replace downloaded projects with symlinks where subtrees are used.
-  $commands = array_merge($commands, $symlink_commands);
-
-  // Custom, site-specific commands defined by config file.
-  // Add custom commands from site make config file.
-  foreach ($config['commands'] as $command) {
-    $commands[] = $command;
-  }
-
-  // Commit.
-  if (!drush_get_option('no-commit', FALSE)) {
-    $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush buildmanager.');
-    $commands[] = _buildmanager_commit($message);
-  }
-
-  // Execute commands.
-  foreach ($commands as $command) {
+  // Execute postbuild  commands.
+  foreach ($commands->postbuild as $command) {
     drush_shell_exec($command);
   }
 
 }
+
 /**
  * Implements drush_hook_COMMAND_validate().
  */
@@ -307,27 +280,6 @@ function &array_merge_recursive_distinct(array &$array1, &$array2 = NULL) {
   }
 
   return $merged;
-}
-
-/**
- * Prep projects directory.
- */
-function _buildmanager_prep_projects_directory() {
-  // Before adding/pulling subtrees, make sure parent directory
-  // for --prefix exists.
-  if (!file_exists('projects')) {
-    $success = mkdir('projects', 0777, TRUE);
-    if (!$success) {
-      return drush_set_error('buildmanager', dt("Failed creating directory: projects"), 'error');
-    }
-  }
-  elseif (file_exists('projects') && !is_dir('projects')) {
-    return drush_set_error('buildmanager', dt("Please remove the 'projects' file. We need to create a directory with that name for your subtrees."), 'error');
-  }
-
-  if ($success) {
-    drush_log(dt('A projects directory has been created at the top of your git repo. Git subtrees will be added there.'), 'ok');
-  }
 }
 
 /**

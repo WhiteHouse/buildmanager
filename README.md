@@ -1,13 +1,43 @@
+Build Manager
+==============
+
+Overview
+---------
+
+  Build Manager provides a wrapper around Drush's make command. Its purpose is
+  to make it easy for site maintainers to manage builds, for custom sites and
+  Drupal distros.
+
+[[ Outline ]]
+
+ Config includes:
+ - prebuild-commands
+ - postbuild-commands
+ - build properties
+
+[[ Developers ]]
+
+ Other extensions can implement the following hooks in their my-project.drush.inc
+ files:
+   - hook_buildmanager_build($make_info, $build_config, $commands);
+   - hook_buildmanager_build_options(), returns addtional options to include in
+     buildmanager-build
+ 
+ Implementers can support arbitrary config in $build_config and adjust commands
+ accordingly.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Drush Subtree
-===============
+=============
 
-About
------
+Overview
+--------
 
-  Drush Subtree provides a simple wrapper around Drush's make command. The purpose is to:
+  Drush Subtree provides a wrapper around git-subtree and integration with
+  Drush's Build Manager extension. Its purpose is to reduce friction for
+  contributors.
    
-    1. Make it easy to maintain your own instance of a Drupal distro.
-    2. Reduce friction for contributors.
 
   Drush Subtree makes it easier to maintain an instance of a distro by:
 

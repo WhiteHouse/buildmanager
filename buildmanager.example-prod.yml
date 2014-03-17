@@ -34,9 +34,12 @@ subtrees:
     squash: TRUE
     message: 'my_module subtree added/updated from http://git.drupal.org/project/my_module.git'
 
+# prebuild-commands:
+# - 'TODO add example here'
+
 # Custom commands. These are run after subtrees are updated and after the drush make
 # rebuild runs, before any changes from drush make are committed.
-commands:
+postbuild-commands:
   - 'rm -rf docroot/sites/default; cd docroot/sites; ln -s ../../symlink-these/default default'
   - 'rm -rf docroot/.htaccess; cd docroot/; ln -s ../symlink-these/.htaccess .htaccess'
   - 'rm -rf docroot/robots.txt; cd docroot/; ln -s ../symlink-these/robots.txt robots.txt'
