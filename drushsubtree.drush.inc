@@ -81,7 +81,6 @@ function drushsubtree_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
- /*
   $items['drushsubtree-push'] = array(
     'description' => '',
     'arguments' => array(),
@@ -90,6 +89,7 @@ function drushsubtree_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+ /*
   $items['drushsubtree-checkout'] = array(
     'description' => '',
     'arguments' => array(),
@@ -638,7 +638,7 @@ function drush_drushsubtree_merge($name = '') {
   $id = _drushsubtree_get_project_id($name, $info, $properties, $tag);
 
   $subtree = new SubtreeCommander($name, $properties);
-  drush_shell_exec($subtree->merge());
+  drush_shell_exec($subtree->merge($id, $tag));
 }
 
 // TODO
