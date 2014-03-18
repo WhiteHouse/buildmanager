@@ -39,14 +39,26 @@ function drushsubtree_drush_command() {
     'aliases' => array('subtree-add'),
   );
 
- /*
   $items['drushsubtree-pull'] = array(
     'description' => '',
-    'arguments' => array(),
-    'examples' => array(),
+    'arguments' => array(
+      'project' => '(Optional) Subtree defined in buildmanager config.',
+    ),
+    'options' => array(
+      'simulate' => array(
+        'description' => 'Output commands to be executed for examination, but do not actually execute them.',
+      ),
+      'message' => array(
+        'description' => 'Message to include at the beginning of new commits.',
+      ),
+    ),
+    'examples' => array(
+      'drush subtree-pull' => '',
+    ),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
+ /*
 
   $items['drushsubtree-merge'] = array(
     'description' => '',
@@ -160,48 +172,6 @@ function _drushsubtree_add_subtree_commit_message($subtree_message = '') {
 }
 
 /**
- * Generate git subtree pull command to be run from top-level of repo.
- *
- * @param string $directory
- *   Directory name where subtree should live
- *
- * @param array $details
- *   Relevant details for git subtree pull command from config file:
- *    - uri
- *    - branch
- *    - squash
- *    - message
- *    - pull, bool
- *    - merge, bool
- *
- * @return string|bool
- *   Return command to be executed. False for don't do anything.
- */
-function _drushsubtree_subtree_pull($directory, $details) {
-  // Check to see if pulls are disabled (e.g. for local development).
-  if (isset($details['pull']) && $details['pull'] == FALSE) {
-    drush_log(dt('git subtree pull is disabled for !project', array('!project' => $directory)), 'ok');
-    return '';
-  }
-
-  drush_log(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $directory)), 'ok');
-
-  // Get params for git subtree pull command.
-  $prefix = _drushsubtree_get_prefix($directory);
-  $uri = _drushsubtree_get_uri($details);
-  $branch = _drushsubtree_get_branch($details);
-  $message = _drushsubtree_add_subtree_commit_message($details);
-
-  // Squash commit history of subtree into a single commit?
-  $squash_history = (isset($details['squash'])) ? $details['squash'] : FALSE;
-  $squash = ($squash_history) ? ' --squash' : '';
-
-  $command = "git subtree pull --prefix={$prefix} {$squash} {$message} {$uri} {$branch}";
-
-  return $command;
-}
-
-/**
  * Get prefix (path) to local subtree.
  *
  * @param string $directory
@@ -247,6 +217,51 @@ function _drushsubtree_get_branch($details) {
   }
 
   return $details['branch'];
+}
+/**
+ * Figure out what version of a subtree project should be checked out.
+ *
+ * Return commit ID so "checkout" can be done as a subtree merge.
+ *
+ * @param string $subtree_name
+ *   Name of subtree.
+ *
+ * @param array $info
+ *   Info from parsed make files.
+ *
+ * @param array $details
+ *   Details about subtree project from buildmanager config.
+ *
+ * @return string
+ *   Commit ID for subtree to be merged to.
+ */
+function _drushsubtree_get_id($subtree_name, $info, $details) {
+  $id = '';
+
+  // First, try getting ID ("revision") from make files.
+  $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
+  $id = _drushsubtree_get_id_from_make_info($subtree_name, $project_info);
+
+  // If no commit ID was specified in make file(s), check for tag specified in
+  // make file, then try looking corresponding ID using remote list of tags.
+  $tag = _drushsubtree_get_tag_from_make_info($subtree_name, $project_info);
+  if (!$tag) {
+    // Make files do not specify any tag for this project.
+    return drush_set_error('drushsubtree', dt("No tag or commit ID available for !name.", array('!name' => $project_name)));
+  }
+  $tags = drushsubtree_list_remote_tags($subtree_name, $details);
+  if (!$tags) {
+    // Attempt to retrieved tags from remote failed.
+    drush_log(dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
+      array('!name' => $subtree_name, '!remote' => $details['uri'],
+            '!tag' => $tag)), 'warning');
+  }
+  if ($tag && $tags) {
+    // Success!
+    $id = $tags[$tag];
+  }
+ 
+  return $id;
 }
 
 /**
@@ -423,89 +438,9 @@ function _drushsubtree_subtree_add_symlink($name, $path) {
 }
 
 /**
- * Returns commands to add/update subtrees in a site repo's projects directory.
- *
- * @param array $subtree_name
- *   Config loaded from site make YAML file
- *
- * @param array $details
- *   Config loaded from site make YAML file
- *
- * @param array $project_info
- *   Project info from make file(s)
- *
- * @return array
- *   Commands to be executed via shell_exec().
- */
-function _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info) {
-  $commands = array();
-
-  $subtree = new SubtreeCommander($subtree_name, $details);
-
-  // Add git subtree if it doesn't already exist.
-  if ($subtree_add = $subtree->add()) {
-    drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
-    $commands[] = $subtree_add;
-  }
-  // Otherwise, pull in any updates.
-  elseif ($subtree_pull = _drushsubtree_subtree_pull($subtree_name, $details)) {
-    $commands[] = $subtree_pull;
-  }
-
-  // Use git subtree merge to check out a particular version of a project. First
-  // get the git commit ID to merge to.
-  $id = _drushsubtree_get_id_from_make_info($subtree_name, $project_info);
-  if (!$id) {
-    // If no commit ID was specified in make file(s), check for tag specified in
-    // make file, then try looking corresponding ID using remote list of tags.
-    $tag = _drushsubtree_get_tag_from_make_info($subtree_name, $project_info);
-    $tags = drushsubtree_list_remote_tags($subtree_name, $details);
-    if (!$tag) {
-      // Make files do not specify any tag for this project.
-      return drush_set_error('drushsubtree', dt("No tag or commit ID available for !name.", array('!name' => $project_name)));
-    }
-    elseif (!$tags) {
-      // Attempt to retrieved tags from remote failed.
-      drush_log(dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
-        array(
-          '!name' => $subtree_name,
-          '!remote' => $details['uri'],
-          '!tag' => $tag)
-        ), 'warning');
-    }
-    else {
-      // Success!
-      $id = $tags[$tag];
-    }
-  }
-
-  if ($id) {
-    if ($subtree_merge = _drushsubtree_subtree_merge($subtree_name, $details, $id, $tag)) {
-      $commands[] = $subtree_merge;
-    }
-  }
-  else {
-    // @todo Detect latest recommended release on d.o when no version is
-    // specified. Consider checking that out to better match standard make file
-    // behavior?
-    drush_log(dt("No commit ID specified for !project (if a tag was specified in a make file, the cooresponding commit ID could not be retrieved). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
-  }
-
-  return $commands;
-}
-
-// TODO
-function drush_drushsubtree_checkout($project) {}
-
-// TODO
-function drush_drushsubtree_pull($project) {}
-
-// TODO
-function drush_drushsubtree_push($project) {}
-
-
-/**
  * Implements hook_buildmanager_build().
+ *
+ * Check for subtrees in config file. Add/update subtrees in build as appropriate.
  *
  * @param array $info
  *   Info from drush make build file.
@@ -541,34 +476,73 @@ function drushsubtree_buildmanager_build($info, $config, $commands) {
   // Get symlink commands to be run after `drush make`.
   $symlink_commands = array();
 
+  // Loop through subtrees twice. Repo updates should be done as prebuild commands.
+  // Symlinks (which will get blown away by drush make) should be restored as
+  // postbuild commands.
   foreach ($config['subtrees'] as $subtree_name => $details) {
-    // Get project info from make file.
-    $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
-    if (!drush_get_option('no-subtree-updates', FALSE)) {
-      $subtree_commands = _drushsubtree_get_subtree_commands($subtree_name, $details, $project_info);
+
+    // Start with postbuild commands (adding symlinks) because prebuild commands
+    // are sometimes skipped (when no-subtree-updates flag is set).
+    // Remove files checked out by drush. Add symlink pointing to local subtree.
+    drush_log(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'ok');
+    $symlink_commands[] = _drushsubtree_subtree_add_symlink($subtree_name,
+                                                          $details['path']);
+
+    // Next add do prebuild commands / subtree repo updates.
+    if (drush_get_option('no-subtree-updates', FALSE)) {
+      // If no-subtree-updates flag is set, skip the rest of the foreach loop.
+      drush_log(dt('Skipping git subtree updates.'), 'ok');
+      continue;
+    }
+
+    // Instantiate new commander to generate subtree commands.
+    $subtree = new SubtreeCommander($subtree_name, $details);
+
+    // Collect commands as $subtree_commands, then add them all to the
+    // beguinning of $commands->prebuild array.
+    // It's important these run before drush make for
+    // two reasons: (1) Incase a project's build file includes a make file in a
+    // subtree project. This will ensure the updated make file is included in the
+    // build. (2) This needs to run before anything else dirties the working
+    // tree (like drush make), otherwise the subtree add/pull/merge will fail.
+    // First, add git subtree if it doesn't already exist.
+    if ($subtree_add = $subtree->add()) {
+      drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
+      $subtree_commands[] = $subtree_add;
+    }
+    // Otherwise, pull in any updates.
+    //elseif ($subtree_pull = _drushsubtree_subtree_pull($subtree_name, $details)) {
+    elseif ($subtree_pull = $subtree->pull()) {
+      $subtree_commands[] = $subtree_pull;
+    }
+
+    // Use git subtree merge to check out a particular version of a project.
+    // First get the git commit ID to merge to using info from make files.
+    $id = _drushsubtree_get_id($subtree_name, $info, $details);
+    if ($id) {
+      // TODO replace _drushsubtree_subtree_merge with $subtree->merge();
+      $subtree_commands[] = _drushsubtree_subtree_merge($subtree_name, $details, $id, $tag);
     }
     else {
-      drush_log(dt('Skipping git subtree updates.'), 'ok');
+      // @todo Detect latest recommended release on d.o when no version is
+      // specified. Consider checking that out to better match standard make file
+      // behavior?
+      drush_log(dt("No commit ID specified for !project (if a tag was specified in a make file, the cooresponding commit ID could not be retrieved). Your install will run on the tip of whatever branch you checked out. (Subtrees do not fallback to the latest recommended release on drupal.org when no version is specified.)", array('!project' => $subtree_name)), 'warning');
     }
-    // Remove files checked out by drush. Add symlink pointing to your local
-    // subtree.
-    drush_log(dt('Preparing to symlink !subtree_name to path: !path', array('!subtree_name' => $subtree_name, '!path' => $details['path'])), 'ok');
-    $symlink_commands[] = _drushsubtree_subtree_add_symlink($subtree_name, $details['path']);
+
+  // End loop thorugh subtrees.
   }
 
-  // Add subtree commands to the beginning of the $commands array, to be
-  // executed before drush make. It's important these run before drush make for
-  // two reasons: (1) Incase a project's build file includes a make file in a
-  // subtree project. This will ensure the updated make file is included in the
-  // build. (2) This needs to run before anything else dirties the working
-  // tree (like drush make), otherwise the subtree add/pull/merge will fail.
-  $commands->prebuild = array_merge($subtree_commands, $commands->prebuild);
-
   // Add symlink commands after drush make but before other commands, incase any
-  // custom post-build commands are committing anything. This way, projects
-  // don't get added and re-removed everytime there's a new drush make build.
+  // custom post-build commands are committing anything. This way, git history
+  // doesn't get polluted with projects being re-added and re-removed every time.
   $commands->postbuild = array_merge($symlink_commands, $commands->postbuild);
 
+  // Now add all subtree_commands to begining of prebuild command list.
+  $commands->prebuild = array_merge($subtree_commands, $commands->prebuild);
+
+  // No return necessary. Commands added to $command object are available to
+  // buildmaster_build command now.
 }
 
 /**
@@ -644,3 +618,14 @@ function _drushsubtree_get_config() {
 
   return $config; 
 }
+
+// TODO
+function drush_drushsubtree_checkout($project) {}
+
+// TODO
+function drush_drushsubtree_pull($project) {}
+
+// TODO
+function drush_drushsubtree_push($project) {}
+
+

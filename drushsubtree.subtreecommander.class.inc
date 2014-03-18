@@ -76,9 +76,42 @@ class SubtreeCommander extends Commander {
     return $command;
   }
 
-  function checkout() {}
+  /**
+   * Generate git subtree pull command to be run from top-level of repo.
+   *
+   * This command is stored in SubtreeCommander's command property.
+   *
+   * @return string|bool
+   *   Executable shell command. False for don't do anything.
+   */
+  function pull() {
+    $directory = $this->name;
 
-  function pull() {}
+    // Check to see if pulls are disabled (e.g. for local development).
+    if ($this->pull == FALSE) {
+      drush_log(dt('git subtree pull is disabled for !project', array('!project' => $directory)), 'warning');
+      return '';
+    }
+
+    drush_log(dt('Preparing to pull subtree: !subtree_name', array('!subtree_name' => $directory)), 'ok');
+
+    // Get params for git subtree pull command.
+    $prefix = _drushsubtree_get_prefix($directory);
+    $uri = $this->uri;
+    $branch = $this->branch;
+    $message = $this->message;
+
+    // Squash commit history of subtree into a single commit?
+    $squash = ($this->squash) ? ' --squash' : '';
+
+    $this->command = "git subtree pull --prefix={$prefix} {$squash} {$message} {$uri} {$branch}";
+
+  // CONTINUE HERE. WHY AREN'T ALL PULLS RUNNING?
+
+    return $this->command;
+  }
+
+  function checkout() {}
 
   function push() {}
 
