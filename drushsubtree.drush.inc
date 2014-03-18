@@ -63,7 +63,8 @@ function drushsubtree_drush_command() {
   $items['drushsubtree-merge'] = array(
     'description' => '',
     'arguments' => array(
-      'project' => '(Optional) Subtree defined in buildmanager config.',
+      'project' => '(Optional) Specify a subtree defined in buildmanager config.',
+      'commit ID' => '(Optional) Override ID/tag specified in make file(s).',
     ),
     'options' => array(
       'simulate' => array(
@@ -621,9 +622,12 @@ function drush_drushsubtree_pull($name = '') {
  * Callback for drushsubtree-merge (subtree-merge).
  *
  * @param string $name
- *   Name of subtree.
+ *   Optional name of subtree to merge.
+ *
+ * @param string $id
+ *   Optional commit id to merge to.
  */
-function drush_drushsubtree_merge($name = '') {
+function drush_drushsubtree_merge($name = '', $id = '') {
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
@@ -637,8 +641,10 @@ function drush_drushsubtree_merge($name = '') {
 
   // Get git tag and id.
   $properties = $config['subtrees'][$name];
-  $tag = _drushsubtree_get_project_tag($name, $project_info);
-  $id = _drushsubtree_get_project_id($name, $info, $properties, $tag);
+  if (!$id) {
+    $tag = _drushsubtree_get_project_tag($name, $project_info);
+    $id = _drushsubtree_get_project_id($name, $info, $properties, $tag);
+  }
 
   $subtree = new SubtreeCommander($name, $properties);
   drush_shell_exec($subtree->merge($id, $tag));
