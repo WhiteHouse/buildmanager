@@ -69,11 +69,9 @@ class SubtreeCommander extends Commander {
     $message = _drushsubtree_add_subtree_commit_message($this->message);
 
     // Build the command to add subtree for the first time.
-    $command = "git subtree add --prefix={$prefix} {$squash} {$message} $uri $branch";
-    // Set commander command.
-    $this->command = $command;
+    $this->command = "git subtree add --prefix={$prefix} {$squash} {$message} $uri $branch";
 
-    return $command;
+    return $this->command;
   }
 
   /**
@@ -164,9 +162,9 @@ class SubtreeCommander extends Commander {
     return $this->command;
   }
 
-  function checkout() {}
-
   function push() {}
+
+  function checkout() {}
 
   /**
    * Getters and setters for properties.
