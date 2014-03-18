@@ -48,7 +48,7 @@ class SubtreeCommander extends Commander {
     if (file_exists($prefix)) {
       // Subtree has already been created. Or there's a directory in our way.
       // Skip this step.
-      drush_log(dt("This directory already exists: !prefix", $prefix), array('!prefix' => $prefix), 'notice');
+      drush_log(dt("This directory already exists: !prefix", array('!prefix' => $prefix), 'notice'));
       drush_log(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory, commit, then re-try.", $prefix), array('!prefix' => $prefix), 'warning');
       // We're done. Return.
       return FALSE;
