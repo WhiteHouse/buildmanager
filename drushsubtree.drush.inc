@@ -55,6 +55,7 @@ function drushsubtree_drush_command() {
     'examples' => array(
       'drush subtree-pull' => '',
     ),
+    'aliases' => array('subtree-pull'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
@@ -588,18 +589,16 @@ function drushsubtree_buildmanager_build_options() {
  *   Name of subtree.
  */
 function drush_drushsubtree_add($name = '') {
-  if (!$name) {
-    $names = array_keys($config['subtrees']);
-    $names = array_combine($names, $names);
-    $name = drush_choice($names, dt('Select a subtree to add:'));
-  }
-
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
+  // Get name if not passed as argument.
+  if (!$name) {
+    $name = _drush_subtree_get_name($config);
+  }
+
   $properties = $config['subtrees'][$name];
   $subtree = new SubtreeCommander($name, $properties);
-
   drush_shell_exec($subtree->add());
 }
 
@@ -622,10 +621,43 @@ function _drushsubtree_get_config() {
 // TODO
 function drush_drushsubtree_checkout($project) {}
 
-// TODO
-function drush_drushsubtree_pull($project) {}
+/**
+ * Callback for drushsubtree-add (subtree-add).
+ *
+ * @param string $name
+ *   Name of subtree.
+ */
+function drush_drushsubtree_pull($name = '') {
+  // Get buildmanager config.
+  $config = _drushsubtree_get_config();
+
+  // Get name if not passed as argument.
+  if (!$name) {
+    $name = _drush_subtree_get_name($config);
+  }
+
+  $properties = $config['subtrees'][$name];
+  $subtree = new SubtreeCommander($name, $properties);
+  drush_shell_exec($subtree->pull());
+}
 
 // TODO
 function drush_drushsubtree_push($project) {}
 
-
+/**
+ * Prompt user to select subtree from options in config file.
+ *
+ * TODO If only one, use that, no prompt. Notify user decision has been made.
+ *
+ * @param array $config
+ *   Parsed config from buildmanager config file.
+ *
+ * @return string
+ *   Name of subtree
+ */
+function _drush_subtree_get_name($config) {
+  $names = array_keys($config['subtrees']);
+  $names = array_combine($names, $names);
+  $name = drush_choice($names, dt('Select a subtree to pull:'));
+  return $name; 
+}

@@ -99,14 +99,14 @@ class SubtreeCommander extends Commander {
     $prefix = _drushsubtree_get_prefix($directory);
     $uri = $this->uri;
     $branch = $this->branch;
-    $message = $this->message;
+
+    // Add custom commit message?
+    $message = _drushsubtree_add_subtree_commit_message($this->message);
 
     // Squash commit history of subtree into a single commit?
     $squash = ($this->squash) ? ' --squash' : '';
 
     $this->command = "git subtree pull --prefix={$prefix} {$squash} {$message} {$uri} {$branch}";
-
-  // CONTINUE HERE. WHY AREN'T ALL PULLS RUNNING?
 
     return $this->command;
   }
