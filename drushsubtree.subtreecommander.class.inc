@@ -162,7 +162,38 @@ class SubtreeCommander extends Commander {
     return $this->command;
   }
 
-  function push() {}
+  /**
+   * Generate git subtree push command to be run from top-level of repo.
+   *
+   * This command is stored in SubtreeCommander's command property.
+   *
+   * @return string|bool
+   *   Executable shell command. False for don't do anything.
+   */
+  function push() {
+    $prefix = _drushsubtree_get_prefix($this->name);
+
+    if (!file_exists($prefix)) {
+      // We're done. Return.
+      return drush_set_error('drushsubtree',
+                          dt("Oops. There's no subtree here to push: !prefix",
+                       array('!prefix' => $prefix)));
+    }
+    // @todo Add an elseif here. If the directory exists, but this is not a
+    // subtree, notify user. Suggest removing/re-adding.
+
+    // Make sure we have minimum required $details.
+    $uri = $this->uri;
+    $branch = $this->branch;
+    if (!$this->uri || !$this->branch) {
+      // We're done. Return.
+      return drush_set_error('drushsubtree', dt("Missing required properties for subtree push in buildmanager config file: uri and/or branch."));
+    }
+
+    // Build the command to add subtree for the first time.
+    $this->command = "git subtree push --prefix={$prefix} $uri $branch";
+    return $this->command;
+  }
 
   function checkout() {}
 

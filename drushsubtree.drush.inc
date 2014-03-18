@@ -84,7 +84,10 @@ function drushsubtree_drush_command() {
   $items['drushsubtree-push'] = array(
     'description' => '',
     'arguments' => array(),
-    'examples' => array(),
+    'examples' => array(
+      'drush subtree-push' => '',
+    ),
+    'aliases' => array('subtree-push'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
@@ -641,8 +644,25 @@ function drush_drushsubtree_merge($name = '') {
   drush_shell_exec($subtree->merge($id, $tag));
 }
 
-// TODO
-function drush_drushsubtree_push($project) {}
+/**
+ * Callback for drushsubtree-push (subtree-push).
+ *
+ * @param string $name
+ *   Name of subtree.
+ */
+function drush_drushsubtree_push($name) {
+  // Get buildmanager config.
+  $config = _drushsubtree_get_config();
+
+  // Get name if not passed as argument.
+  if (!$name) {
+    $name = _drush_subtree_get_name($config);
+  }
+
+  $properties = $config['subtrees'][$name];
+  $subtree = new SubtreeCommander($name, $properties);
+  drush_shell_exec($subtree->push());
+}
 
 /**
  * Prompt user to select subtree from options in config file.
