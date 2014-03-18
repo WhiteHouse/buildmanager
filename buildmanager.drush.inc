@@ -300,3 +300,25 @@ function _buildmanager_commit($message) {
   $command = "git add . ; git commit -am '{$message}';";
   return $command;
 }
+
+/**
+ * Get info for a particular project from make file(s).
+ *
+ * @param string $subtree_name.
+ *   Name of project/subtree.
+ *
+ * @param array $config
+ *   Config from buildmanager.config.yml
+ *
+ * @return array
+ *   Info from make file(s).
+ */
+function buildmanager_get_project_info($subtree_name, $config) {
+  $build_file = $config['build_file'];
+  $info = _buildmanager_get_info($build_file);
+  if (!isset($info['projects'][$subtree_name])) {
+    drush_set_error('buildmanager', dt('Sorry. No info available in make file(s) for project: !name',
+      array('!name' => $subtree_name)));
+  }
+  return $info['projects'][$subtree_name];
+}

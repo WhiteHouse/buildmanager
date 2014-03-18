@@ -59,16 +59,29 @@ function drushsubtree_drush_command() {
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
- /*
 
   $items['drushsubtree-merge'] = array(
     'description' => '',
-    'arguments' => array(),
-    'examples' => array(),
+    'arguments' => array(
+      'project' => '(Optional) Subtree defined in buildmanager config.',
+    ),
+    'options' => array(
+      'simulate' => array(
+        'description' => 'Output commands to be executed for examination, but do not actually execute them.',
+      ),
+      'message' => array(
+        'description' => 'Message to include at the beginning of new commits.',
+      ),
+    ),
+    'examples' => array(
+      'drush subtree-merge' => '',
+    ),
+    'aliases' => array('subtree-merge'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+ /*
   $items['drushsubtree-push'] = array(
     'description' => '',
     'arguments' => array(),
@@ -131,9 +144,6 @@ function site_make_drush_help($section) {
  */
 function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
   // Get config_file.
-  if (!$config_file) {
-    $config_file = drushsubtree_get_config_file();
-  }
   $config = _drushsubtree_get_config($config_file);
   if (!$details = $config['subtrees'][$subtree_name]) {
     drush_set_error(dt('No subtree config available for !subtree in !config_file'),
@@ -233,23 +243,21 @@ function _drushsubtree_get_branch($details) {
  * @param array $details
  *   Details about subtree project from buildmanager config.
  *
+ * @param string $tag
+ *   Tag, if available. Empty if not.
+ *
  * @return string
- *   Commit ID for subtree to be merged to.
+ *   Commit ID for subtree to be merged to. Empty if unavailable.
  */
-function _drushsubtree_get_id($subtree_name, $info, $details) {
+function _drushsubtree_get_project_id($subtree_name, $info, $details, $tag) {
   $id = '';
 
   // First, try getting ID ("revision") from make files.
   $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
   $id = _drushsubtree_get_id_from_make_info($subtree_name, $project_info);
 
-  // If no commit ID was specified in make file(s), check for tag specified in
-  // make file, then try looking corresponding ID using remote list of tags.
-  $tag = _drushsubtree_get_tag_from_make_info($subtree_name, $project_info);
-  if (!$tag) {
-    // Make files do not specify any tag for this project.
-    return drush_set_error('drushsubtree', dt("No tag or commit ID available for !name.", array('!name' => $project_name)));
-  }
+  // If no commit ID was specified in make file(s),  try looking up using remote
+  // list of tags.
   $tags = drushsubtree_list_remote_tags($subtree_name, $details);
   if (!$tags) {
     // Attempt to retrieved tags from remote failed.
@@ -301,6 +309,7 @@ function drushsubtree_list_remote_tags($project_name, $details) {
   // e214ea5b94f345b66f302d0d4aae232b4128c1e3  refs/tags/7.x-1.0-rc2
   // 8f61c66e5f55e72a35f4a1b8f4eee93a428a03ac  refs/tags/7.x-1.0-rc3
   $command = "git ls-remote --tags {$details['uri']}";
+
   // Each line of output is stored in $output array.
   // $exit_code is 0 for success, anything else for failure.
   exec($command, $output, $exit_code);
@@ -329,7 +338,7 @@ function drushsubtree_list_remote_tags($project_name, $details) {
 }
 
 /**
- * Get tag/version for a project in a make file.
+ * Get tag/version for a project specified in make file(s).
  *
  * @param string $project_name
  *   Name of project (module, profile, theme, library).
@@ -340,7 +349,7 @@ function drushsubtree_list_remote_tags($project_name, $details) {
  * @return string
  *   Project version number specified in make file. Empty if unavailable.
  */
-function _drushsubtree_get_tag_from_make_info($project_name, $project_info) {
+function _drushsubtree_get_project_tag($project_name, $project_info) {
   $tag = '';
 
   if (isset($project_info['version'])) {
@@ -349,55 +358,13 @@ function _drushsubtree_get_tag_from_make_info($project_name, $project_info) {
   elseif (isset($project_info['download']['tag'])) {
     $tag = $project_info['download']['tag'];
   }
+  else {
+    // Make files do not specify any tag for this project.
+    drush_log(dt("No tag or commit ID available for !name.",
+                  array('!name' => $project_name), 'warning'));
+  }
 
   return $tag;
-}
-
-/**
- * Return command for git subtree merge.
- *
- * Note: This terminology is a little confusing. To "checkout" a particular
- * tagged version for a subtree you need to do a git subtree "merge". There is
- * no subtree checkout command.
- *
- * @param string $directory
- *   Name of directory containing subtree.
- *
- * @param array $details
- *   Relevant details for git subtree merge command from config file.
- *
- * @param string $id
- *   Commit id
- *
- * @param string $tag
- *   (Optional) tag from make file, if revision was not explicitly designated.
- *
- * @return string
- *   Git subtree merge command to be executed.
- */
-function _drushsubtree_subtree_merge($directory, $details, $id, $tag = '') {
-  // Check to see if merges are disabled (e.g. for local development).
-  if (isset($details['merge']) && $details['merge'] == FALSE) {
-    drush_log(dt('git subtree merge is disabled for !project', array('!project' => $directory)), 'ok');
-    return '';
-  }
-
-  if ($tag) {
-    drush_log(dt('Preparing to merge !subtree_name subtree to id (tag: !tag): !id',
-      array('!subtree_name' => $directory, '!id' => $id, '!tag' => $tag)), 'ok');
-  }
-  else {
-    drush_log(dt('Preparing to merge !subtree_name subtree to id: !id',
-       array('!subtree_name' => $directory, '!id' => $id)), 'ok');
-  }
-
-  // Get params for subtree merge command.
-  $prefix = _drushsubtree_get_prefix($directory);
-  $message = _drushsubtree_add_subtree_commit_message($details);
-  // Build command.
-  $command = "git subtree merge --squash --prefix={$prefix} {$message} {$id}";
-
-  return $command;
 }
 
 /**
@@ -519,10 +486,11 @@ function drushsubtree_buildmanager_build($info, $config, $commands) {
 
     // Use git subtree merge to check out a particular version of a project.
     // First get the git commit ID to merge to using info from make files.
-    $id = _drushsubtree_get_id($subtree_name, $info, $details);
+    $tag = _drushsubtree_get_project_tag($subtree_name,
+                                         $info['projects'][$subtree_name]);
+    $id = _drushsubtree_get_project_id($subtree_name, $info, $details, $tag);
     if ($id) {
-      // TODO replace _drushsubtree_subtree_merge with $subtree->merge();
-      $subtree_commands[] = _drushsubtree_subtree_merge($subtree_name, $details, $id, $tag);
+      $subtree_commands[] = $subtree->merge($id, $tag);
     }
     else {
       // @todo Detect latest recommended release on d.o when no version is
@@ -605,14 +573,19 @@ function drush_drushsubtree_add($name = '') {
 /**
  * Find, parse, return buildmanager config.
  *
+ * @param string $conf_file
+ *   Optional /path/to/buildmanager.config.yml.
+ *
  * @return array
  *   Parsed buildmanager.config.yml.
  */
-function _drushsubtree_get_config() {
+function _drushsubtree_get_config($config_file = '') {
   if (!function_exists('buildmanager_get_config_file')) {
     return drush_set_error('drushsubtree', dt('Missing Drush dependency: Build Manager'));  
   }
-  $config_file = buildmanager_get_config_file();
+  if (!$config_file) {
+    $config_file = buildmanager_get_config_file();
+  }
   $config = _buildmanager_get_config($config_file);
 
   return $config; 
@@ -622,7 +595,7 @@ function _drushsubtree_get_config() {
 function drush_drushsubtree_checkout($project) {}
 
 /**
- * Callback for drushsubtree-add (subtree-add).
+ * Callback for drushsubtree-pull (subtree-pull).
  *
  * @param string $name
  *   Name of subtree.
@@ -639,6 +612,33 @@ function drush_drushsubtree_pull($name = '') {
   $properties = $config['subtrees'][$name];
   $subtree = new SubtreeCommander($name, $properties);
   drush_shell_exec($subtree->pull());
+}
+
+/**
+ * Callback for drushsubtree-merge (subtree-merge).
+ *
+ * @param string $name
+ *   Name of subtree.
+ */
+function drush_drushsubtree_merge($name = '') {
+  // Get buildmanager config.
+  $config = _drushsubtree_get_config();
+
+  // Get name if not passed as argument.
+  if (!$name) {
+    $name = _drush_subtree_get_name($config);
+  }
+
+  // Get project info from make file(s).
+  $project_info = buildmanager_get_project_info($name, $config);
+
+  // Get git tag and id.
+  $properties = $config['subtrees'][$name];
+  $tag = _drushsubtree_get_project_tag($name, $project_info);
+  $id = _drushsubtree_get_project_id($name, $info, $properties, $tag);
+
+  $subtree = new SubtreeCommander($name, $properties);
+  drush_shell_exec($subtree->merge());
 }
 
 // TODO

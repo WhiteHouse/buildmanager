@@ -111,11 +111,64 @@ class SubtreeCommander extends Commander {
     return $this->command;
   }
 
+  /**
+   * Generate git subtree merge command to be run from top-level of repo.
+   *
+   * This command is stored in SubtreeCommander's command property.
+   *
+   * Note: This terminology is a little confusing. To "checkout" a particular
+   * tagged version for a subtree you need to do a git subtree "merge". There is
+   * no subtree checkout command.
+   *
+   * @param string $id
+   *   Git commit ID to merge to.
+   *
+   * @param string $tag
+   *   (Optional) Git tag corresponding to commit ID.
+   *
+   * @return string|bool
+   *   Executable shell command. False for don't do anything.
+   */
+  function merge($id, $tag = '') {
+    $directory = $this->name;
+
+    // Check to see if merges are disabled (e.g. for local development).
+    if ($this->merge == FALSE) {
+      drush_log(dt('git subtree merge is disabled for !project', array('!project' => $directory)), 'ok');
+      return '';
+    }
+
+    // Notify user about what we're doing.
+    if ($tag) {
+      drush_log(dt('Preparing to merge !subtree_name subtree to id (tag: !tag): !id',
+        array('!subtree_name' => $directory, '!id' => $id, '!tag' => $tag)), 'ok');
+    }
+    else {
+      drush_log(dt('Preparing to merge !subtree_name subtree to id: !id',
+         array('!subtree_name' => $directory, '!id' => $id)), 'ok');
+    }
+
+    // Get params for subtree merge command.
+    $prefix = _drushsubtree_get_prefix($directory);
+    $message = _drushsubtree_add_subtree_commit_message($this->message);
+
+    // Note: Squash is hardcoded. Sometime if you don't use --squash, merges
+    // won't work. If user has set --squash to FALSE, notify user that their
+    // setting is not going to be respected here (unlike subtree pull where
+    // their setting will be honored).
+    if ($this->squash == FALSE) {
+      drush_log(dt('Even though squash is set to TRUE in your buildmanager config, git subtree merges are all executed WITH --squash option.'), 'notice');
+    }
+
+    // Build command.
+    $this->command = "git subtree merge --squash --prefix={$prefix} {$message} {$id}";
+
+    return $this->command;
+  }
+
   function checkout() {}
 
   function push() {}
-
-  function merge() {}
 
   /**
    * Getters and setters for properties.
