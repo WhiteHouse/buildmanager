@@ -108,7 +108,9 @@ function drushsubtree_drush_command() {
 
   $items['drushsubtree-push'] = array(
     'description' => '',
-    'arguments' => array(),
+    'arguments' => array(
+      'project' => '',
+    ),
     'examples' => array(
       'drush subtree-push' => '',
     ),
@@ -120,6 +122,7 @@ function drushsubtree_drush_command() {
   $items['drushsubtree-checkout'] = array(
     'description' => 'Faux subtree command. "Checkout" a tagged version of a subtree project.',
     'arguments' => array(
+      'project' => '',
       'tag or commit ID' => 'Git tag or commit ID. (Check available tags with drushsubtree-get-tags. Commit IDs must be passed as full 40 character SHA1 hash. 40 character tags are not supported.)'
     ),
     'examples' => array(
@@ -143,6 +146,7 @@ function drushsubtree_drush_command() {
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
+
   $items['drushsubtree-setup-repo'] = array(
     // TODO
     // Prompt:
@@ -175,7 +179,7 @@ function site_make_drush_help($section) {
  * Callback for drushsubtree-get-tags().
  */
 function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
-  // Get config_file.
+  // Get config.
   $config = _drushsubtree_get_config($config_file);
   if (!$details = $config['subtrees'][$subtree_name]) {
     drush_set_error(dt('No subtree config available for !subtree in !config_file'),
@@ -606,9 +610,12 @@ function drush_drushsubtree_add($name = '') {
     $name = _drush_subtree_get_name($config);
   }
 
+  // Generate subtree add command and execute it.
   $properties = $config['subtrees'][$name];
   $subtree = new SubtreeCommander($name, $properties);
-  drush_shell_exec($subtree->add());
+  if ($subtree_add = $subtree->add()) {
+    drush_shell_exec($subtree_add);
+  }
 }
 
 /**
