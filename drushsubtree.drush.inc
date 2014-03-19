@@ -18,6 +18,28 @@ require_once('drushsubtree.subtreecommander.class.inc');
 function drushsubtree_drush_command() {
   $items = array();
 
+  $items['drushsubtree'] = array(
+    'description' => '',
+    'arguments' => array(
+      'command' => '',
+    ),
+    'options' => array(
+      'simulate' => array(
+        'description' => 'Output commands to be executed for examination, but do not actually execute them.',
+      ),
+    ),
+    'examples' => array(
+      'drush subtree add <project>' => '',
+      'drush subtree pull <project>' => '',
+      'drush subtree push <project>' => '',
+      'drush subtree merge <project> <id>' => '',
+      'drush subtree checkout <project> <tag>' => '',
+    ),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'aliases' => array('subtree'),
+  );
+
   $items['drushsubtree-add'] = array(
     'description' => '',
     'arguments' => array(
@@ -746,4 +768,30 @@ function _drush_subtree_get_name($config) {
   $names = array_combine($names, $names);
   $name = drush_choice($names, dt('Select a subtree to pull:'));
   return $name; 
+}
+
+/**
+ * Callback for drushsubtree (subtree) command.
+ *
+ * @param string $command
+ *   Subtree command (or faux command) to execute.
+ *
+ * @param string $name
+ *   Name of subtree project to act on. (This will actually get passed on via
+ *   $args, not as $name. But it's included in the function signature because
+ *   it's a required param to keep the interface consistent with this pattern:
+ *
+ *     drush subtree <command> <name> [<args>,...]
+ */
+function drush_drushsubtree($command, $name) {
+  // Name of function to call for desired drushsubtree command.
+  $function = 'drush_drushsubtree_' . $command;
+
+  // Build $args array to pass to subtree command.
+  $args = func_get_args();
+  // Remove $command (arg0).
+  array_shift($args);
+
+  // Call drush subtree <command> [<args>,...].
+  call_user_func_array($function, $args);
 }
