@@ -76,6 +76,8 @@ function drushsubtree_drush_command() {
     ),
     'examples' => array(
       'drush subtree-merge' => '',
+      'drush subtree-merge <my project>' => '',
+      'drush subtree-merge <my project> <commit id>' => '',
     ),
     'aliases' => array('subtree-merge'),
     // No bootstrap at all.
@@ -241,8 +243,8 @@ function _drushsubtree_get_branch($details) {
  * @param string $subtree_name
  *   Name of subtree.
  *
- * @param array $info
- *   Info from parsed make files.
+ * @param array $project_info
+ *   Info about a project from parsed make files.
  *
  * @param array $details
  *   Details about subtree project from buildmanager config.
@@ -253,23 +255,31 @@ function _drushsubtree_get_branch($details) {
  * @return string
  *   Commit ID for subtree to be merged to. Empty if unavailable.
  */
-function _drushsubtree_get_project_id($subtree_name, $info, $details, $tag) {
+function _drushsubtree_get_project_id($subtree_name, $project_info, $details, $tag = '') {
   $id = '';
 
   // First, try getting ID ("revision") from make files.
-  $project_info = (isset($info['projects'][$subtree_name])) ? $info['projects'][$subtree_name] : array();
   $id = _drushsubtree_get_id_from_make_info($subtree_name, $project_info);
 
-  // If no commit ID was specified in make file(s),  try looking up using remote
+  // If no commit ID was specified in make file(s), try looking up ID using remote
   // list of tags.
-  $tags = drushsubtree_list_remote_tags($subtree_name, $details);
-  if (!$tags) {
-    // Attempt to retrieved tags from remote failed.
-    drush_log(dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out for version !tag, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
-      array('!name' => $subtree_name, '!remote' => $details['uri'],
-            '!tag' => $tag)), 'warning');
+  if (!$id) {
+    // Get an array of commit IDs keyed by tags.
+    $tags = drushsubtree_list_remote_tags($subtree_name, $details);
   }
-  if ($tag && $tags) {
+  if (!$id && !$tags) {
+    // Attempt to retrieved tags from remote failed.
+    drush_log(dt("Commit IDs for !name tags could not be retrieved from !remote.\nTo explicitly designate which commit ID to check out, you can add this to your makefile (replace abc1234 with a real commit ID):\n\tprojects[!name][download][revision] = abc1234",
+      array('!name' => $subtree_name, '!remote' => $details['uri'])), 'warning');
+  }
+  elseif ($tags && !$tag) {
+    // Tags were retrieved successfully. No tag was passed in. See if we can get
+    // tag/version from make file(s).
+    $tag = _drushsubtree_get_project_tag($subtree_name, $project_info);
+  }
+  // If we've got an array of IDs keyed by tags ($tags) and a tag to look up
+  // ($tags), we've got what we need now.
+  if ($tags && $tag) {
     // Success!
     $id = $tags[$tag];
   }
@@ -490,9 +500,10 @@ function drushsubtree_buildmanager_build($info, $config, $commands) {
 
     // Use git subtree merge to check out a particular version of a project.
     // First get the git commit ID to merge to using info from make files.
-    $tag = _drushsubtree_get_project_tag($subtree_name,
-                                         $info['projects'][$subtree_name]);
-    $id = _drushsubtree_get_project_id($subtree_name, $info, $details, $tag);
+    $project_info = $info['projects'][$subtree_name];
+    $tag = _drushsubtree_get_project_tag($subtree_name, $project_info);
+    $id = _drushsubtree_get_project_id($subtree_name, $project_info,
+                                       $details, $tag);
     if ($id) {
       $subtree_commands[] = $subtree->merge($id, $tag);
     }

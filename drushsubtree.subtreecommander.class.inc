@@ -137,11 +137,10 @@ class SubtreeCommander extends Commander {
     }
 
     // Notify user about what we're doing.
-    $text = dt('Preparing to merge !subtree_name subtree to id: !id',
-                  array('!subtree_name' => $directory, '!id' => $id));
-    if ($tag) {
-      $text .= dt(' (tag !tag)', array('!tag' => $tag));
-    }
+    $text = dt('Preparing to merge !subtree_name subtree to id: !id !tag', array(
+               '!subtree_name' => $directory,
+               '!id' => $id,
+               '!tag' => ($tag) ? "(tag {$tag})" : ''));
     drush_log($text, 'ok');
 
     // Get params for subtree merge command.
