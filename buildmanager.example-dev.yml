@@ -23,8 +23,14 @@
 #
 #       drush site-make ./site_make.example-dev.yml
 #
-target: docroot
-build_file: build.make
+build:
+  target: docroot
+  build_file: build.make
+  options:
+    - -v
+    - --debug
+    - --no-recursion 
+    - --no-gitinfofile
 subtrees:
   example_profile:
     path: docroot/profiles/example_profile

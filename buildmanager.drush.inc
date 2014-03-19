@@ -85,7 +85,7 @@ function drush_buildmanager_build($config_file = '') {
   $config = buildmanager_get_config($config_file);
 
   // Assemble $info array by loading, parsing and merging make file(s).
-  $build_file = $config['build_file'];
+  $build_file = $config['build']['build_file'];
   drush_log(dt('Using build file: !build_file', array('!build_file' => $build_file)), 'ok');
   $info = _buildmanager_get_info($build_file);
 
@@ -96,7 +96,7 @@ function drush_buildmanager_build($config_file = '') {
   }
 
   // Add buildmanager's prebuild commands.
-  $target = $config['target'];
+  $target = $config['build']['target'];
   if (file_exists($target)) {
     // Remove Drupal code base. To be rebuilt by drush make.
     $commands->prebuild[] = "rm -rf $target";
@@ -130,9 +130,8 @@ function drush_buildmanager_build($config_file = '') {
   }
 
   // Build. (Run drush make.)
-  // If target director already exists, remove it.
-  // TODO Get build config. Use that to build this command.
-  $build_command = DRUSH_COMMAND . " make {$build_file} {$target} --no-recursion --no-gitinfofile";
+  $options = implode(' ', $config['build']['options']);
+  $build_command = DRUSH_COMMAND . " make {$build_file} {$target} {$options}";
   drush_shell_exec($build_command);
 
   // Execute postbuild  commands.
@@ -314,7 +313,7 @@ function _buildmanager_commit($message) {
  *   Info from make file(s).
  */
 function buildmanager_get_project_info($subtree_name, $config) {
-  $build_file = $config['build_file'];
+  $build_file = $config['build']['build_file'];
   $info = _buildmanager_get_info($build_file);
   if (!isset($info['projects'][$subtree_name])) {
     drush_set_error('buildmanager', dt('Sorry. No info available in make file(s) for project: !name',

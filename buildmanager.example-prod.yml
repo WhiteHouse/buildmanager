@@ -1,9 +1,23 @@
-# Directory where you what drush make to build your site code base.
-target: docroot
-
-# Parent make file for building code base (and including any other relevant make
-# files).
-build_file: build.make
+# Build properties.
+build:
+  # Directory where you what drush make to build your site code base. Used like
+  # this: drush make path/to/build/file <target>
+  target: docroot
+  # Parent make file for building code base (and including any other relevant make
+  # files). Used like this: drush make <build_file> docroot
+  build_file: build.make
+  # Options will be passed to drush make exactly how they're written here, like this:
+  # drush make build.make docroot --option1 --option2 --option3=a,b,c ... --optionN
+  options:
+    # The no-recursion flag is recommended. This makes distros easier to
+    # maintain and enables extensions that like Drush Subtree to more intelligently
+    # interact with your code base and support your builds. Note: This means ALL
+    # make files to be included in your build must be either be (1) referenced
+    # by your build.make file or (2) named as an include in a makefile included
+    # by build.make. Make files downloaded by drush after your build begins will
+    # not be detected and included at runtime.
+    - --no-recursion 
+    - --no-gitinfofile
 
 # Git subtrees, for any projects you maintain in git repos outside this site
 # repository. These could include modules, themes, or distros you maintain on
