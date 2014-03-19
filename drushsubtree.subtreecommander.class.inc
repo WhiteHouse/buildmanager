@@ -194,8 +194,6 @@ class SubtreeCommander extends Commander {
     return $this->command;
   }
 
-  function checkout() {}
-
   /**
    * Getters and setters for properties.
    */

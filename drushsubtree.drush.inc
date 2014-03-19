@@ -95,15 +95,19 @@ function drushsubtree_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
- /*
   $items['drushsubtree-checkout'] = array(
-    'description' => '',
-    'arguments' => array(),
-    'examples' => array(),
+    'description' => 'Faux subtree command. "Checkout" a tagged version of a subtree project.',
+    'arguments' => array(
+      'tag or commit ID' => 'Git tag or commit ID. (Check available tags with drushsubtree-get-tags. Commit IDs must be passed as full 40 character SHA1 hash. 40 character tags are not supported.)'
+    ),
+    'examples' => array(
+      'drush subtree-checkout <id>' => '',
+      'drush subtree-checkout <tag>' => '',
+    ),
+    'aliases' => array('subtree-checkout'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
-  // */
 
   $items['drushsubtree-get-tags'] = array(
     'description' => "Get a list of tagged releases for a subtree project.",
@@ -606,8 +610,53 @@ function _drushsubtree_get_config($config_file = '') {
   return $config; 
 }
 
-// TODO
-function drush_drushsubtree_checkout($project) {}
+/**
+ * Callback for drush drushsubtree-checkout (subtree-checkout).
+ *
+ * Faux subtree command. Works like `git checkout <id>` or `git checkout <tag>`.
+ *
+ * @param string $name
+ *   Subtree name.
+ *
+ * @param string $ref
+ *   Git commit ID or tag.
+ */
+function drush_drushsubtree_checkout($name, $ref) {
+  // Get buildmanager config.
+  $config = _drushsubtree_get_config();
+
+  // Make sure there are subtrees in config.
+  if (!isset($config['subtrees'])) {
+    return drush_set_error(dt('No subtrees found in buildmanager config file.'));  
+  }
+  // Make sure named subtree is there.
+  else if (!isset($config['subtrees'][$name])) {
+    return drush_set_error(
+      dt('No subtree with this name found in buildmanager config file: !name',
+      array('!name' => $name))
+    );  
+  }
+  else {
+    // Grab project properties from config.
+    $properties = $config['subtrees'][$name];
+  }
+
+  // Determine if $ref is a tag or a commit ID. (This check is pretty
+  // unsophistocated. If $ref is 40 characters, assume it's a commit ID,
+  // otherwise it's a tag.) Then get/set $id so we can do a subtree merge to
+  // "checkout" the desired tag/id.
+  (strlen($ref) == 40) ? $id = $ref : $tag = $ref;
+  if ($tag) {
+    // It's not 40 characters (not a SHA1), assume $ref is a tag.
+    $project_info = buildmanager_get_project_info($name, $config);
+    $id = _drushsubtree_get_project_id($name, $project_info, $properties, $ref);
+  }
+
+  drush_print(dt('Note: "checkout" is not a real subtree command. This is really just a friendly wrapper around subtree merge.'), 'notice');
+
+  $subtree = new SubtreeCommander($name, $properties);
+  drush_shell_exec($subtree->merge($id, $tag));
+}
 
 /**
  * Callback for drushsubtree-pull (subtree-pull).
@@ -654,7 +703,7 @@ function drush_drushsubtree_merge($name = '', $id = '') {
   $properties = $config['subtrees'][$name];
   if (!$id) {
     $tag = _drushsubtree_get_project_tag($name, $project_info);
-    $id = _drushsubtree_get_project_id($name, $info, $properties, $tag);
+    $id = _drushsubtree_get_project_id($name, $project_info, $properties, $tag);
   }
 
   $subtree = new SubtreeCommander($name, $properties);
