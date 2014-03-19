@@ -82,7 +82,7 @@ function drush_buildmanager_build($config_file = '') {
     $config_file = buildmanager_get_config_file();
   }
   drush_log(dt('Loading configuration from: !config_file', array('!config_file' => $config_file)), 'ok');
-  $config = _buildmanager_get_config($config_file);
+  $config = buildmanager_get_config($config_file);
 
   // Assemble $info array by loading, parsing and merging make file(s).
   $build_file = $config['build_file'];
@@ -211,7 +211,7 @@ function buildmanager_get_config_file() {
  * @return array
  *   Return parsed YAML config as PHP array.
  */
-function _buildmanager_get_config($config_file) {
+function buildmanager_get_config($config_file) {
   if (!class_exists('Symfony\Component\Yaml\Parser')) {
     // For Drush PSR-0 and Composer information, see:
     // http://drupal.org/node/1316322.
