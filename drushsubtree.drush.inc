@@ -18,7 +18,7 @@ require_once('drushsubtree.subtreecommander.class.inc');
 function drushsubtree_drush_command() {
   $items = array();
 
-  $items['drushsubtree'] = array(
+  $items['subtree'] = array(
     'description' => '',
     'arguments' => array(
       'command' => '',
@@ -37,10 +37,9 @@ function drushsubtree_drush_command() {
     ),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
-    'aliases' => array('subtree'),
   );
 
-  $items['drushsubtree-add'] = array(
+  $items['subtree-add'] = array(
     'description' => '',
     'arguments' => array(
       'project' => '(Optional) Subtree defined in buildmanager config.',
@@ -58,10 +57,9 @@ function drushsubtree_drush_command() {
     ),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
-    'aliases' => array('subtree-add'),
   );
 
-  $items['drushsubtree-pull'] = array(
+  $items['subtree-pull'] = array(
     'description' => '',
     'arguments' => array(
       'project' => '(Optional) Subtree defined in buildmanager config.',
@@ -77,12 +75,11 @@ function drushsubtree_drush_command() {
     'examples' => array(
       'drush subtree-pull' => '',
     ),
-    'aliases' => array('subtree-pull'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-merge'] = array(
+  $items['subtree-merge'] = array(
     'description' => '',
     'arguments' => array(
       'project' => '(Optional) Specify a subtree defined in buildmanager config.',
@@ -101,12 +98,11 @@ function drushsubtree_drush_command() {
       'drush subtree-merge <my project>' => '',
       'drush subtree-merge <my project> <commit id>' => '',
     ),
-    'aliases' => array('subtree-merge'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-push'] = array(
+  $items['subtree-push'] = array(
     'description' => '',
     'arguments' => array(
       'project' => '',
@@ -114,12 +110,11 @@ function drushsubtree_drush_command() {
     'examples' => array(
       'drush subtree-push' => '',
     ),
-    'aliases' => array('subtree-push'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-checkout'] = array(
+  $items['subtree-checkout'] = array(
     'description' => 'Faux subtree command. "Checkout" a tagged version of a subtree project.',
     'arguments' => array(
       'project' => '',
@@ -129,13 +124,12 @@ function drushsubtree_drush_command() {
       'drush subtree-checkout <id>' => '',
       'drush subtree-checkout <tag>' => '',
     ),
-    'aliases' => array('subtree-checkout'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-get-tags'] = array(
-    'description' => "Get a list of tagged releases for a subtree project.",
+  $items['subtree-get-tags'] = array(
+    'description' => "View tagged releases for a subtree project.",
     'arguments' => array(
       'project_name' => '',
       'config' => '(Optional) path/to/drushsubtree.config.yml',
@@ -143,11 +137,13 @@ function drushsubtree_drush_command() {
     'examples' => array(
       'drush drushsubtree-get-tags my_project' => '',
     ),
+    'aliases' => array('subtree-ls-tags'),
     // No bootstrap at all.
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
-  $items['drushsubtree-setup-repo'] = array(
+  $items['subtree-setup-repo'] = array(
+    'description' => '@todo',
     // TODO
     // Prompt:
     // - Create symlink-these directory
@@ -178,7 +174,7 @@ function site_make_drush_help($section) {
 /**
  * Callback for drushsubtree-get-tags().
  */
-function drush_drushsubtree_get_tags($subtree_name, $config_file = '') {
+function drush_drushsubtree_subtree_get_tags($subtree_name, $config_file = '') {
   // Get config.
   $config = _drushsubtree_get_config($config_file);
   if (!$details = $config['subtrees'][$subtree_name]) {
@@ -601,13 +597,13 @@ function drushsubtree_buildmanager_build_options() {
  * @param string $name
  *   Name of subtree.
  */
-function drush_drushsubtree_add($name = '') {
+function drush_drushsubtree_subtree_add($name = '') {
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
   // Get name if not passed as argument.
   if (!$name) {
-    $name = _drush_subtree_get_name($config);
+    $name = _drushsubtree_get_name($config);
   }
 
   // Generate subtree add command and execute it.
@@ -650,7 +646,7 @@ function _drushsubtree_get_config($config_file = '') {
  * @param string $ref
  *   Git commit ID or tag.
  */
-function drush_drushsubtree_checkout($name, $ref) {
+function drush_drushsubtree_subtree_checkout($name, $ref) {
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
@@ -693,13 +689,13 @@ function drush_drushsubtree_checkout($name, $ref) {
  * @param string $name
  *   Name of subtree.
  */
-function drush_drushsubtree_pull($name = '') {
+function drush_drushsubtree_subtree_pull($name = '') {
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
   // Get name if not passed as argument.
   if (!$name) {
-    $name = _drush_subtree_get_name($config);
+    $name = _drushsubtree_get_name($config);
   }
 
   $properties = $config['subtrees'][$name];
@@ -716,13 +712,13 @@ function drush_drushsubtree_pull($name = '') {
  * @param string $id
  *   Optional commit id to merge to.
  */
-function drush_drushsubtree_merge($name = '', $id = '') {
+function drush_drushsubtree_subtree_merge($name = '', $id = '') {
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
   // Get name if not passed as argument.
   if (!$name) {
-    $name = _drush_subtree_get_name($config);
+    $name = _drushsubtree_get_name($config);
   }
 
   // Get project info from make file(s).
@@ -745,13 +741,13 @@ function drush_drushsubtree_merge($name = '', $id = '') {
  * @param string $name
  *   Name of subtree.
  */
-function drush_drushsubtree_push($name) {
+function drush_drushsubtree_subtree_push($name) {
   // Get buildmanager config.
   $config = _drushsubtree_get_config();
 
   // Get name if not passed as argument.
   if (!$name) {
-    $name = _drush_subtree_get_name($config);
+    $name = _drushsubtree_get_name($config);
   }
 
   $properties = $config['subtrees'][$name];
@@ -770,7 +766,7 @@ function drush_drushsubtree_push($name) {
  * @return string
  *   Name of subtree
  */
-function _drush_subtree_get_name($config) {
+function _drushsubtree_get_name($config) {
   $names = array_keys($config['subtrees']);
   $names = array_combine($names, $names);
   $name = drush_choice($names, dt('Select a subtree to pull:'));
@@ -790,9 +786,9 @@ function _drush_subtree_get_name($config) {
  *
  *     drush subtree <command> <name> [<args>,...]
  */
-function drush_drushsubtree($command, $name) {
+function drush_drushsubtree_subtree($command, $name) {
   // Name of function to call for desired drushsubtree command.
-  $function = 'drush_drushsubtree_' . $command;
+  $function = 'drush_drushsubtree_subtree_' . $command;
 
   // Build $args array to pass to subtree command.
   $args = func_get_args();
