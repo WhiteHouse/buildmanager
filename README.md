@@ -1,12 +1,50 @@
 Build Manager
 ==============
 
+
 Overview
 ---------
 
-  Build Manager provides a wrapper around Drush's make command. Its purpose is
-  to make it easy for site maintainers to manage builds, for custom sites and
-  Drupal distros.
+Build Manager provides a wrapper around Drush's make command to simplify
+builds for people who maintain distros or custom sites with drush make. Here's
+how it simplifies things:
+
+  - Provides an interactive prompt for setting up your Build Manager
+    configuration. Once it's set up, Build Manager can automate your entire
+    build.
+
+  - Enables site maintainers to specify custom prebuild and postbuild commands to be
+    run before and after `drush make`.
+
+  - Enables other drush extensions (like Drush Subtree) to hook in and provide
+    their own prebuild and postbuild commands and support for additional
+    configuration options.
+
+
+Dependencies
+------------
+
+  - (Recommended) Drush master / 7.x (Build Manager uses the Drush Make
+    --no-recurse flag and autoloading which--as of the time of this
+    writing--have not been backported to 6.x)
+
+
+Usage
+-----
+
+If you already have a build.make file, get started quickly by using the interactive configure prompt:
+
+    # Start interactive configure prompt. This will generate a YAML config file
+    # for you. (By default, it's called buildmanager.config.yml.)
+    drush buildmanager-configure
+
+    # Now (re)build your code base like this.
+    drush buildmanager-build
+
+If you do not have make file set up yet, or if you're using [Drush
+Subtree](https://github.com/whitehouse/drushsubtree) to incorporate git subtrees
+into your site's make build, see the section below [Tips for working with make
+files]()
 
 [[ Outline ]]
 
@@ -27,54 +65,6 @@ Overview
  Implementers can support arbitrary config in $build_config and adjust commands
  accordingly.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Drush Subtree
-=============
-
-Overview
---------
-
-  Drush Subtree provides a wrapper around git-subtree and integration with
-  Drush's Build Manager extension. Its purpose is to reduce friction for
-  contributors.
-   
-
-  Drush Subtree makes it easier to maintain an instance of a distro by:
-
-    - Putting all your contrib and custom projects into a build.make file. This
-      way any patches you maintain can be easily documented and applied by drush
-      make. 
-
-    - Storing any custom shell commands in a simple config file (see
-      drushsubtree.example.yml) to automate and standardize your site re-build
-      process. This makes updating to the next release as simple as running
-      `drush make`.
-
-  Drush Subtree reduces friction for contributors by storing contrib and custom
-  projects you (or your team) maintain in git subtrees. This enables you to:
-
-    - Do development inside whatever site repo you're actively working in,
-      then push commits out of your site repo up to drupal.org or whatever
-      private repo your custom module may live in.
-
-    - Pull updates into your site repo from an outside repo for your contrib
-      distro, module, theme, or custom project. 
-
-    - (For large teams) Enables people to contribute to your contrib project
-      with internal work on a site repo, then lets you easily push that work out
-      to public repos when it's ready to be released.
-
-Dependencies
-------------
-
-  - Drush master branch (until --no-recurse and autoloading are committed to
-    6.x), requires composer install.
-
-  - Git subtree
-
-Usage
------
 
   1. Set up a build.make file at the top-level of your repository. Drush make
      will use this to set up your site. (NOTE: You can include other make files in you
@@ -123,26 +113,26 @@ Usage
         drush dsb --message="Update example distro to 7.x-1.3 with drush subtree" --simulate
 
 
-Tips for including multiple make files in your build file
-----------------------------------------------------------
+Tips for working with make files
+--------------------------------
 
-  If you're including multiple make files, all properties need keys. For example...
+If you're including multiple make files, all properties need keys. For example...
 
-  This is bad:
+This is bad:
 
-     example1.make has this line: includes[] = exampleA.make
-     example2.make has this line: includes[] = exampleB.make
+   example1.make has this line: includes[] = exampleA.make
+   example2.make has this line: includes[] = exampleB.make
 
-  This is good:
+This is good:
 
-     example1.make has this line: includes[a] = exampleA.make
-     example2.make has this line: includes[b] = exampleB.make
+   example1.make has this line: includes[a] = exampleA.make
+   example2.make has this line: includes[b] = exampleB.make
 
-  And this is good:
+And this is good:
 
-     build-example.make has this line:  includes[base] = path/to/base.make
-     base.make has this line:           includes[core] = drupal-org-core.make
-     base.make also has this line:      includes[contrib] = drupal-org.make
+   build-example.make has this line:  includes[base] = path/to/base.make
+   base.make has this line:           includes[core] = drupal-org-core.make
+   base.make also has this line:      includes[contrib] = drupal-org.make
 
 TODO
 -----
