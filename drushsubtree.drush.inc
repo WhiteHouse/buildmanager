@@ -147,17 +147,6 @@ function drushsubtree_drush_command() {
 }
 
 /**
- * Implements hook_drush_help().
- */
-function site_make_drush_help($section) {
-  switch ($section) {
-    case 'drush:site-make':
-      return dt("@todo");
-
-  }
-}
-
-/**
  * Returns array of standard subtree options, used for multiple commands.
  *
  * @return array

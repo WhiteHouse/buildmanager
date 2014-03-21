@@ -68,7 +68,8 @@ Overview
 Dependencies
 ------------
 
-  - Drush master branch (until --no-recurse and autoloading are committed to 6.x)
+  - Drush master branch (until --no-recurse and autoloading are committed to
+    6.x), requires composer install.
 
   - Git subtree
 
