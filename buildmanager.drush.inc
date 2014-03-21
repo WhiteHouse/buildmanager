@@ -21,7 +21,7 @@ function buildmanager_drush_command() {
   $items['buildmanager-build'] = array(
     'description' => "Wrapper around drush make for (re)building site repos.",
     'arguments' => array(
-      'config' => '(Optional) path/to/buildmanager.config.yml',
+      'config_file' => '(Optional) path/to/buildmanager.config.yml',
     ),
     'options' => array(
       'show-info' => array(
