@@ -1,7 +1,6 @@
 Build Manager
 ==============
 
-
 Overview
 ---------
 
@@ -32,6 +31,8 @@ Dependencies
 Usage
 -----
 
+### Quick start
+
 If you already have a build.make file, get started quickly by using the interactive configure prompt:
 
     # Start interactive configure prompt. This will generate a YAML config file
@@ -41,82 +42,71 @@ If you already have a build.make file, get started quickly by using the interact
     # Now (re)build your code base like this.
     drush buildmanager-build
 
+To see what's going on under the hood, use Drush's `-v` option. To see all the
+commands Build Manager would execute to rebuild your repo without actually
+running any of them, use Drush's `--simulate` option.
+
 If you do not have make file set up yet, or if you're using [Drush
 Subtree](https://github.com/whitehouse/drushsubtree) to incorporate git subtrees
 into your site's make build, see the section below [Tips for working with make
-files]()
+files](#tips-for-working-with-make-files)
 
-[[ Outline ]]
-
- Config includes:
- - prebuild-commands
- - postbuild-commands
- - build properties
-
-[[ Developers ]]
-
- Other extensions can implement the following hooks in their my-project.drush.inc
- files:
-   - hook_buildmanager_build($make_info, $build_config, $commands), obj $commands
-   - hook_buildmanager_build_options(), returns addtional options to include in
-     buildmanager-build
-   - hook_buildmanager_configure($config), returns altered $config
- 
- Implementers can support arbitrary config in $build_config and adjust commands
- accordingly.
-
+### Manual configuration
 
   1. Set up a build.make file at the top-level of your repository. Drush make
-     will use this to set up your site. (NOTE: You can include other make files in you
-     your build.make, and included make files can include other make files. But
-     when drush make runs with the --no-recursion flag. If your make file
-     downloads a project with its own make file, drush make will NOT
-     automatically build the stuff specified by that make file.)
+     will use this to set up your site.
 
-     If your build.make includes a makefile from a git subtree, add it to your
-     repo like this:
+  1. Set up config for your own site build in buildmanager.example.yml,
+     following one of the exampe config files provided. This includes: 
 
-       git subtree add --prefix=projects/example --squash --message="Added tweetserver subtree. From https://github.com/example/example.git" https://github.com/example/example.git 7.x-1.x
-       
-
-  2. Set up config for your own site build in drushsubtree.example.yml. This
-     includes (see drushsubtree.example.yml): 
-     
-       - which build file to use (e.g. build.make)
-       - where to build the site (e.g. docroot)
-       - what projects to replace with git subtrees
-       - any commands you want to run after the site is rebuilt
-
-
-  3. Do this:
+  1. Do this:
       
         cd /path/to/my-site-repo
-        drush drushsubtree-build --message="Update example distro to 7.x-1.3 with drush subtree" -v
+        drush buildmanager-build --message="Update example distro to 7.x-1.3 with drush subtree"
           
-          or use aliases
-
-        drush subtree-build --message="Update example distro to 7.x-1.3 with drush subtree" -v
-        drush dsb --message="Update example distro to 7.x-1.3 with drush subtree" -v
-
         # If you have multiple config files, you can skip the prompt and specify
         # which config to use like this:
-        drush subtree ./drushsubtree.mysite.yml --message="Update example distro to 7.x-1.3 with drush subtree" -v
+        drush bmb ./drushsubtree.mysite.yml --message="Update example distro to 7.x-1.3 with drush subtree" -v
 
-     Helpful additional options provided by Drush:
 
-        # Use --debug to see more info about what drush is doing under the hood.
-        drush dsb -v --message="Update example distro to 7.x-1.3 with drush subtree"
-        drush dsb -v --debug --message="Update example distro to 7.x-1.3 with drush subtree"
+### Developers
+
+ Implement the following hooks to extend Build Manger with your own Drush
+ projects (see working examples for all of these in Drush Subtree):
+
+   - hook_buildmanager_build($make_info, $build_config, $commands), alter
+     $commands object to add prebuild and postbuild commands
+   - hook_buildmanager_build_options(), return addtional options to include in
+     buildmanager-build (implement this if your implementation of
+     hook_buildmanager_build uses options not already provided by
+     buildmanager-build)
+   - hook_buildmanager_configure($config), insert yourself into the
+     `buildmanager-configure` interactive prompt, return altered $config to be
+     stored in buildmanager.config.yml
  
-        # Use --simulate to see the commands drush will execute when you run
-        # site make (without actually running it).
-        drush dsb --message="Update example distro to 7.x-1.3 with drush subtree" --simulate
+ @todo buildmanager.api.php
 
 
 Tips for working with make files
 --------------------------------
 
-If you're including multiple make files, all properties need keys. For example...
+Build Manager is a simple wrapper around Drush Make for working with build
+files. A "build" file is drush make file that kicks off a drush make build for a
+Drupal site codebase. (Drupal distros on drupal.org usually include several make files.
+The build file is the one named: build-myprofile.make.)
+
+You can use Build Manager with any build file, and configure it to use and Drush
+Make files you want BUT here are a few recommendations to keep things easy and
+straight forward working with Build Manager:
+
+  - Use the --no-recurse flag. Explicitly include all make files for your build
+    in build.make, or make sure the files included in build.make are directly including make
+    files. Detecting new make files at runtime and then pulling in new
+    dependencies
+  - If you're including multiple make files, all properties need keys. (See
+    below.)
+
+#### Example: Including multiple files (all properties need keys)
 
 This is bad:
 
@@ -134,9 +124,24 @@ And this is good:
    base.make has this line:           includes[core] = drupal-org-core.make
    base.make also has this line:      includes[contrib] = drupal-org.make
 
-TODO
------
-Currently subtree turns off recursion and expects all make files to be
-included in a master build.make. It could be possible to get rid of this, but
-this could create confusion and complexity. Revisit this.
+#### Example build.make file
 
+    ; Base
+    ;
+    ;  Builds an instance of the example_profile distro.
+    ;  This example assumes you maintain an distribution (install profile) on
+    ;  drupal.org called example_profile. This include simply pulls in the make file
+    ;  included in that project (stored in this repo at docroot/profiles/example/build-example.make).
+    ;
+    ; --------------------------------------------------
+    includes[base] = docroot/profiles/example/build-example.make
+
+    ; Contrib
+    ;
+    ;  Add contrib projects to your own copy of the example distro.
+    ;
+    ; ------------------------------------------------------------
+    projects[ctools][version] = 1.3
+    projects[context][version] = 3.1
+    projects[entity][version] = 1.2
+    projects[entityreference][version] = 1.1
