@@ -19,6 +19,11 @@ function drushsubtree_drush_command() {
   $items = array();
   $standard_command_options = _drushsubtree_standard_command_options();
 
+  // TODO Add this:
+  /*
+  $items['subtree-remote'] = array(
+  // */
+
   $items['subtree'] = array(
     'description' => 'An interface for running drushsubtree commands with more git-like syntax. (All options for all commands are supported. See `drush subtree-<command>` --help for documentation about options for particular commands.)',
     'arguments' => array(
@@ -515,7 +520,7 @@ function drushsubtree_buildmanager_build($info, $config, $commands) {
     // build. (2) This needs to run before anything else dirties the working
     // tree (like drush make), otherwise the subtree add/pull/merge will fail.
     // First, add git subtree if it doesn't already exist.
-    if ($subtree_add = $subtree->add()) {
+    if ($subtree_add = $subtree->add(TRUE)) {
       drush_log(dt('Preparing to add subtree: !subtree_name', array('!subtree_name' => $subtree_name)), 'ok');
       $subtree_commands[] = $subtree_add;
     }
@@ -578,7 +583,7 @@ function _drushsubtree_prep_projects_directory() {
 }
 
 /**
- * Implements hook_buildmanager_build_options();
+ * Implements hook_buildmanager_build_options().
  */
 function drushsubtree_buildmanager_build_options() {
   return array(
@@ -590,6 +595,68 @@ function drushsubtree_buildmanager_build_options() {
       'description' => '@todo Remove and re-add comma separated list of subtree(s).',
     ),
   );  
+}
+
+/**
+ * Implements hook_buildmanager_configure().
+ *
+ * Prompt for subtree info to be included in buildmanager config.
+ *
+ * @param array $config
+ *   @see hook_buildmanager_configure.
+ *
+ * @pararm bool $prompt
+ *   Ask user if project includes subtrees.
+ *
+ * @return array
+ *   Config with subtree properties added, to be included in buildmanager.config.yml.
+ */
+function drushsubtree_buildmanager_configure($config, $prompt = TRUE) {
+  if ($prompt && drush_confirm("\n" . dt("Does your build include subtrees?")) == FALSE) {
+    // Our work here is done.
+    return;
+  }
+  else {
+    drush_print("\n" . dt("I'll help you set up configuration for subtrees. Later when Build Manager prompts you for info about symlinks, don't worry about your subtrees. Drush Subtree will take care of setting up and restoring those symlinks for you when Build Manager (re)builds."));
+  }
+
+  drush_print("\n" . dt("subtree properties..."));
+  drush_print(dt("Tell me about any subtrees included in this build one-by-one."));
+  $subtrees = array();
+  $get_subtrees = TRUE;
+  // Get subtree properties.
+  while ($get_subtrees) {
+    $name = drush_prompt(dt("What's the name of your subtree"));
+
+    drush_print(dt("Please enter the path to the project in your codebase (e.g. docroot/sites/all/modules/custom/my-project)"));
+    $subtrees[$name]['path'] = drush_prompt("path");
+
+    drush_print(dt("Repo URI"));
+    $subtrees[$name]['uri'] = drush_prompt("uri");
+    
+    drush_print(dt("Branch to pull from and push to"));
+    $subtrees[$name]['branch'] = drush_prompt(dt("branch"));
+
+    drush_print(dt("(Optional) Add a standard commit message to be included in any subtree add/pull/merge commits."));
+    $default_message =  "{$name} subtree from {$subtrees[$name]['uri']}";
+    $subtrees[$name]['message'] = drush_prompt(dt("message"), $default_message);
+
+    // Continue collecting info about more subtrees?
+    $get_subtrees = drush_confirm(dt("Does your build include any more subtrees?"));
+  }
+
+  // Show subtree properties to user. Confirm they're right.
+  // Show commands to user. Confirm they're right.
+  drush_print("\n" . dt("Here are the subtree properties you entered:" . "\n"));
+  drush_print(drush_format($subtrees,  NULL, 'yaml'));
+  if (!drush_confirm("Are these properties correct?")) {
+    // Do over.
+    $subtrees = drushsubtree_buildmanager_configure($config);
+  }
+
+  // Set subtrees property in Build Manager config file.
+  $config['subtrees'] = $subtrees;
+  return $config;
 }
 
 /**
