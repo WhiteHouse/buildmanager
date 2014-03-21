@@ -49,7 +49,7 @@ running any of them, use Drush's `--simulate` option.
 If you do not have make file set up yet, or if you're using [Drush
 Subtree](https://github.com/whitehouse/drushsubtree) to incorporate git subtrees
 into your site's make build, see the section below [Tips for working with make
-files](#tips-for-working-with-make-files)
+files](#tips-for-working-with-make-files).
 
 ### Manual configuration
 
@@ -110,19 +110,19 @@ straight forward working with Build Manager:
 
 This is bad:
 
-   example1.make has this line: includes[] = exampleA.make
-   example2.make has this line: includes[] = exampleB.make
+    example1.make has this line: includes[] = exampleA.make
+    example2.make has this line: includes[] = exampleB.make
 
 This is good:
 
-   example1.make has this line: includes[a] = exampleA.make
-   example2.make has this line: includes[b] = exampleB.make
+    example1.make has this line: includes[a] = exampleA.make
+    example2.make has this line: includes[b] = exampleB.make
 
 And this is good:
 
-   build-example.make has this line:  includes[base] = path/to/base.make
-   base.make has this line:           includes[core] = drupal-org-core.make
-   base.make also has this line:      includes[contrib] = drupal-org.make
+    build-example.make has this line:  includes[base] = path/to/base.make
+    base.make has this line:           includes[core] = drupal-org-core.make
+    base.make also has this line:      includes[contrib] = drupal-org.make
 
 #### Example build.make file
 
