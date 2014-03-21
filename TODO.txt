@@ -1,5 +1,0 @@
-[ ] If working tree has modifications, exit and error out.
-[ ] Detect merge conflicts with subtree pull/merge.
-[ ] Make squash available for subtree merge, otherwise checking out a particular
-    tag older in history after making local changes does not work.
-[ ] If a subtree pull fails, exit and error out.
