@@ -39,15 +39,24 @@ class SubtreeCommander extends Commander {
    *
    * This command is stored in SubtreeCommander's command property.
    *
+   * @param bool $fail_quietly
+   *   Set to true if you don't want to warn user that subtree add can't be run.
+   *   Use this if you're calling add() to find out if you need to add a
+   *   subtree, but have no reason to believe there's an error if a
+   *   subtree/directory already exists.
+   *
    * @return string|bool
    *   Executable shell command. False for don't do anything.
    */
-  function add() {
+  function add($fail_quietly = FALSE) {
     $prefix = _drushsubtree_get_prefix($this->name);
 
     if (file_exists($prefix)) {
       // Subtree has already been created. Or there's a directory in our way.
-      // Skip this step.
+      if ($fail_quietly) {
+        // We're done.
+        return FALSE;  
+      }
       drush_log(dt("This directory already exists: !prefix", array('!prefix' => $prefix)), 'warning');
       // We're done. Return.
       return drush_set_error(dt("Git subtree add command will be skipped. If !prefix is not a subtree, remove this directory, commit, then re-try.", array('!prefix' => $prefix)));
@@ -96,6 +105,8 @@ class SubtreeCommander extends Commander {
     $prefix = _drushsubtree_get_prefix($directory);
     $uri = $this->uri;
     $branch = $this->branch;
+
+    // @todo Confirm $prefix is a subtree, not just a directory.
 
     // Add custom commit message?
     $message = _drushsubtree_add_subtree_commit_message($this->message);
