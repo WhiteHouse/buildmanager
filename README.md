@@ -19,9 +19,10 @@ Overview
 
  Other extensions can implement the following hooks in their my-project.drush.inc
  files:
-   - hook_buildmanager_build($make_info, $build_config, $commands);
+   - hook_buildmanager_build($make_info, $build_config, $commands), obj $commands
    - hook_buildmanager_build_options(), returns addtional options to include in
      buildmanager-build
+   - hook_buildmanager_configure($config), returns altered $config
  
  Implementers can support arbitrary config in $build_config and adjust commands
  accordingly.

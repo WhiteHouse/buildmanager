@@ -58,7 +58,88 @@ function buildmanager_drush_command() {
     $build_options
   );
 
+  $items['buildmanager-configure'] = array(
+    'description' => "Interactive prompt to set up your buildmanager.config.yml.",
+    'arguments' => array(
+      //'config' => '(Optional) path/to/buildmanager.config.yml to be updated',
+    ),
+    'examples' => array(
+      'drush buildmanager-configure' => '',
+      'drush buildmanager-config' => '',
+      'drush bmc' => '',
+    ),
+    'aliases' => array('bmc', 'buildmanager-config'),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
   return $items;
+}
+
+/**
+ * Generate buildmanager.config.yml.
+ */
+function drush_buildmanager_configure() {
+  drush_print("\n" . dt("Beginning interactive prompt to set up your buildmanager config file..."));
+  drush_print(dt("Hit <Enter> to accept defaults.") . "\n");
+
+  // Get config file name.
+  drush_print(dt("Enter the file name where your YAML configuration will be stored."));
+  $prompt = dt('file name');
+  $default = 'buildmanager.config.yml';
+  $required = TRUE;
+  $file_name = drush_prompt($prompt, $default, $required);
+  // @todo Check name. Prompt: Note: buildmanager only auto-detects config files that begin with "buildmanager. Change it?
+
+  // Construct $config array to be converted to YAML and written to $file_name at the end.
+  $config = array();
+
+  // Get build properties.
+  drush_print("\n" . dt("build properties..."));
+
+  // Target.
+  drush_print(dt("Enter the name of the directory where codebase will be built."));
+  $prompt = dt('target');
+  $default = 'docroot';
+  $required = TRUE;
+  $config['build']['target'] = drush_prompt($prompt, $default, $required);
+
+  // Build file.
+  drush_print(dt("Enter the name of the drush make file to be used to build your Drupal codebase.\n(If your make file is not stored in the top directory of your repo, specify /path/to/you/build.make.)"));
+  $prompt = dt('build_file');
+  $default = 'build.make';
+  $required = TRUE;
+  $config['build']['build_file'] = drush_prompt($prompt, $default, $required);
+
+  // Options.
+  drush_print(dt("Enter comma separated options to be passed to drush make."));
+  $prompt = dt('options');
+  $default = '--no-recursion,--no-gitinfofile';
+  $required = TRUE;
+  $options = drush_prompt($prompt, $default, $required);
+  $config['build']['options'] = explode(',', $options);
+
+  // Enable other Drush extensions to hook in and add config.
+  $config = drush_command_invoke_all('buildmanager_configure', $config);
+
+  // Add custom postbuild commands to restore symlinks.
+  if (drush_confirm("\n" . dt("Does your codebase contain symlinks?\n(e.g to a sites directory or settings.php file that lives outside your docroot)"))) {
+    $symlink_commands = _buildmanager_bmc_get_symlink_commands();
+    // Check for any other postbuild commands set by anyone implementing hook_buildmanager_configure.
+    $other_postbuild_commands = (isset($config['postbuild-commands'])) ? $config['postbuild-commands'] : array();
+    // Add symlink commands to existing postbuild commands.
+    $config['postbuild-commands'] = array_merge($other_postbuild_commands, $symlink_commands);
+  }
+
+  // Format config as YAML.
+  $config_yaml = drush_format($config, NULL, 'yaml');
+
+  // Print config to screen.
+  drush_print("\n" . dt("Here's the configuration you entered formatted as YAML:") . "\n");
+  drush_print($config_yaml);
+
+  // Write to file.
+  file_put_contents($file_name, $config_yaml);
 }
 
 /**
@@ -107,17 +188,19 @@ function drush_buildmanager_build($config_file = '') {
     $commands->prebuild[] = $command;
   }
 
-  // Add buildmanager's postbuild commands.
+  // Add custom postbuild commands from config file.
+  foreach ($config['postbuild-commands'] as $command) {
+    $commands->postbuild[] = $command;
+  }
+
+  // Add buildmanager's postbuild commands. Add after custom commands, so our
+  // commit includes all changes.
   if (!drush_get_option('no-commit', FALSE)) {
     // Commit.
     $message = ($message = drush_get_option('message', FALSE)) ? $message : dt('Rebuild with drush buildmanager.');
     $commands->postbuild[] = _buildmanager_commit($message);
   }
 
-  // Add custom postbuild commands from config file.
-  foreach ($config['postbuild-commands'] as $command) {
-    $commands->postbuild[] = $command;
-  }
 
   // Invoke buildmanager_build. Give other modules/extensions an opportunity to
   // examine $info and $config and add or modify $commands.
@@ -320,4 +403,64 @@ function buildmanager_get_project_info($subtree_name, $config) {
       array('!name' => $subtree_name)));
   }
   return $info['projects'][$subtree_name];
+}
+
+/**
+ * Prompt user to for symlinks. Generate postbuild symlink commands.
+ *
+ * @return array
+ *   Postbuild shell commands to restore symlinks after drush make blows them away.
+ */
+function _buildmanager_bmc_get_symlink_commands() {
+  drush_print("Collecting info for postbuild commands to restore symlinks...");
+  $commands = array();
+  $symlinks = array();
+
+  // Get info about symlinks.
+  $get_links = TRUE;
+  while ($get_links) {
+    // @todo Add some validation. E.g. don't accept spaces.
+    $path_to_symlink = drush_prompt(dt("Path to symlink")); 
+    $path_to_target = drush_prompt(dt("Path to file or directory"));
+    $symlinks = array_merge($symlinks, array($path_to_symlink => $path_to_target));
+    // Review symlinks entered.
+    drush_print("\n" . dt("These are the symlinks you have entered:"));
+    foreach ($symlinks as $from => $to) {
+      drush_print("{$from} -> {$to}");
+    }
+    $get_links = drush_confirm(dt("Enter more symlinks?"));
+  }
+
+  // Generate symlink commands.
+  foreach ($symlinks as $from => $to) {
+
+    // Get source, relative to parent directory inside docroot.
+    $count = count(explode('/', $from));
+    $source = '';
+    for ($i = 0; $i < $count - 1; $i++) {
+      $source .= '../';
+    };
+    // Add prefix to relative source path.
+    $source .= $to;
+
+    // Parent directory for symlink.
+    $pos = strrpos($from, '/');
+    $parent_directory = substr($from, 0, $pos);
+
+    // Name of symlink.
+    $name = substr($from, $pos + 1);
+
+    // Remove the directory. Replace it with a symlink.
+    $commands[] = "rm -rf {$from}; cd {$parent_directory}; ln -s {$source} {$name};";
+  }
+
+  // Show commands to user. Confirm they're right.
+  drush_print("\n" . dt("Here are the postbuild commands Build Manager will run from the top-level of your repository after Drush Make blows away your symlinks:"));
+  drush_print(drush_format($commands,  NULL, 'yaml'));
+  if (!drush_confirm("Are these postbuild commands correct?")) {
+    // Do over.
+    $commands = _buildmanager_bmc_get_symlink_commands();
+  }
+
+  return $commands;
 }
