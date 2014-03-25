@@ -4,3 +4,4 @@
           file: build.make
           target: docroot
           options: --no-recurse
+[ ] Detect make files in code base. Help build build.make.
