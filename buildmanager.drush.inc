@@ -428,6 +428,7 @@ function _buildmanager_bmc_get_symlink_commands() {
     foreach ($symlinks as $from => $to) {
       drush_print("{$from} -> {$to}");
     }
+    drush_print("\n");
     $get_links = drush_confirm(dt("Enter more symlinks?"));
   }
 
