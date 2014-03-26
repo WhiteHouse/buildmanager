@@ -231,7 +231,7 @@ function drush_buildmanager_build_validate() {
   $is_valid = TRUE;
 
   // TODO Check drush version. Currently, this requires master branch with
-  // --no-recurse option.
+  // --no-recursion option.
   // TODO Check ownership. If ant rebuilds, ownership may be funny.
   // TODO This command must be run from top-level of git repo.
   // TODO Confirm we're in a git repo. cd "$(git rev-parse --show-toplevel)"
