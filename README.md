@@ -24,7 +24,7 @@ Dependencies
 ------------
 
   - (Recommended) Drush master / 7.x (Build Manager uses the Drush Make
-    --no-recurse flag and autoloading which--as of the time of this
+    --no-recursion flag and autoloading which--as of the time of this
     writing--have not been backported to 6.x)
 
 
@@ -99,7 +99,7 @@ You can use Build Manager with any build file, and configure it to use and Drush
 Make files you want BUT here are a few recommendations to keep things easy and
 straight forward working with Build Manager:
 
-  - Use the --no-recurse flag. Explicitly include all make files for your build
+  - Use the --no-recursion flag. Explicitly include all make files for your build
     in build.make, or make sure the files included in build.make are directly including make
     files. Detecting new make files at runtime and then pulling in new
     dependencies
