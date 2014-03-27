@@ -73,6 +73,17 @@ function buildmanager_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+  $items['buildmanager-find-make-files'] = array(
+    'description' => "Find any make files in the repo.",
+    'arguments' => array(
+      //'config' => '(Optional) path/to/buildmanager.config.yml to be updated',
+    ),
+    'examples' => array(),
+    'aliases' => array('bmfmf'),
+    // No bootstrap at all.
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
   return $items;
 }
 
@@ -265,7 +276,7 @@ function buildmanager_is_toplevel($path = '') {
   }
 
   // Get toplevel of repo.
-  $toplevel = buildmanager_show_toplevel();
+  $toplevel = buildmanager_get_toplevel();
 
   // Make sure we're working with real paths.
   $path = realpath($path);
@@ -284,7 +295,7 @@ function buildmanager_is_toplevel($path = '') {
  * @return string|bool
  *   Path to toplevel of repo.
  */
-function buildmanager_show_toplevel() {
+function buildmanager_get_toplevel() {
   $command = 'git rev-parse --show-toplevel';
   exec($command, $output, $exit_code);
   if ($exit_code === 0) {
@@ -295,6 +306,39 @@ function buildmanager_show_toplevel() {
     // Could not get toplevel of repo. Maybe we're not in a repo.
     return drush_set_error(dt('Command failed: git rev-parse --show-toplevel. Are you in a git repo?'));
   }
+}
+
+/**
+ * Callback for buildmanager-find-make-files.
+ */
+function drush_buildmanager_find_make_files() {
+  // Scan directory for make files like *.make.
+  foreach (buildmanager_find_make_files() as $file) {
+    drush_print("{$file['basename']}\t\t{$file['filename']}");
+  }
+
+  return $make_files;
+}
+
+/**
+ * Find all makefiles in repo.
+ */
+function buildmanager_find_make_files() {
+  $toplevel = buildmanager_get_toplevel();
+  $make_files = array();
+
+  // Scan directory for make files like *.make.
+  foreach (drush_scan_directory($toplevel, '/.*/') as $file) {
+    if (!strpos($file->basename, '.make')) {
+      continue;
+    }
+    $make_files[] = array(
+      'basename' => $file->basename,
+      'filename' => $file->filename,
+    );
+  }
+
+  return $make_files; 
 }
 
 /**
