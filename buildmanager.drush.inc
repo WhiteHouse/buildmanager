@@ -230,10 +230,12 @@ function drush_buildmanager_build($config_file = '') {
 function drush_buildmanager_build_validate() {
   $is_valid = TRUE;
 
+  // TODO This command must be run from top-level of git repo.
+  $is_valid = buildmanager_is_toplevel();
+
   // TODO Check drush version. Currently, this requires master branch with
   // --no-recursion option.
   // TODO Check ownership. If ant rebuilds, ownership may be funny.
-  // TODO This command must be run from top-level of git repo.
   // TODO Confirm we're in a git repo. cd "$(git rev-parse --show-toplevel)"
   // TODO Confirm config points to a make file.
   // TODO Check code base for make files. See if they're all being included in
@@ -244,6 +246,55 @@ function drush_buildmanager_build_validate() {
   // Confirm we have a config file.
 
   return $is_valid;
+}
+
+/**
+ * Check if $path is the toplevel of the repository.
+ *
+ * @param string $path
+ *   Optional path. Use directory command was executed from otherwise.
+ *
+ * @return bool
+ *   True, success. False, fail.
+ */
+function buildmanager_is_toplevel($path = '') {
+  // Get path to check.
+  if (!$path) {
+    exec('pwd', $output, $exit_code);
+    $path = $output[0];
+  }
+
+  // Get toplevel of repo.
+  $toplevel = buildmanager_show_toplevel();
+
+  // Make sure we're working with real paths.
+  $path = realpath($path);
+  $toplevel = realpath($toplevel);
+
+  // Compare.
+  if ($path == $toplevel) {
+    return TRUE;  
+  }
+  else {
+    return drush_set_error(dt('This command must be run from the toplevel directory in the repository.'));
+  }
+}
+
+/**
+ * @return string|bool
+ *   Path to toplevel of repo.
+ */
+function buildmanager_show_toplevel() {
+  $command = 'git rev-parse --show-toplevel';
+  exec($command, $output, $exit_code);
+  if ($exit_code === 0) {
+    // Success.
+    return $output[0];
+  }
+  else {
+    // Could not get toplevel of repo. Maybe we're not in a repo.
+    return drush_set_error(dt('Command failed: git rev-parse --show-toplevel. Are you in a git repo?'));
+  }
 }
 
 /**
@@ -267,7 +318,7 @@ function buildmanager_get_config_file() {
 
   if (count($config_files) < 1) {
     // No config found. Error.
-    drush_return_error(dt('No config file found. See buildmanager/README.md.'));
+    return drush_set_error(dt('No config file found. See buildmanager/README.md.'));
   }
   elseif (count($config_files) > 1) {
     // If more than one found, prompt for input.
