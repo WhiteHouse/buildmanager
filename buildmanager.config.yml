@@ -8,48 +8,10 @@ build:
   build_file: build.make
   # Options will be passed to drush make exactly how they're written here, like this:
   # drush make build.make docroot --option1 --option2 --option3=a,b,c ... --optionN
-  options:
-    # The no-recursion flag is recommended. This makes distros easier to
-    # maintain and enables extensions that like Drush Subtree to more intelligently
-    # interact with your code base and support your builds. Note: This means ALL
-    # make files to be included in your build must be either be (1) referenced
-    # by your build.make file or (2) named as an include in a makefile included
-    # by build.make. Make files downloaded by drush after your build begins will
-    # not be detected and included at runtime.
-    - --no-recursion 
-    - --no-gitinfofile
 
-# Git subtrees, for any projects you maintain in git repos outside this site
-# repository. These could include modules, themes, or distros you maintain on
-# drupal.org or custom projects in repos somewhere else.
-subtrees:
-  example_profile:
-    # Path to where drush make will store this project.
-    # This will be replaced with a symlink to your subtree stored in
-    # projects/example_profile.
-    path: docroot/profiles/example_profile
-    # URI to git repo.
-    uri: 'http://git.drupal.org/project/example_profile.git'
-    # Branch to git subtree add.
-    branch: 7.x-1.x
-    # If squash is set to false, the whole external git history will be pulled
-    # into your site repo. (This can look messy and confusing to people who
-    # don't understand what they're looking at.)
-    squash: TRUE
-    # Include the message below with any git subtree commits.
-    # It's not obvious form the commit history where a subtree is pulled in
-    # from. It can be convienent to provide this info as a part of your commit
-    # message to prevent confusion.
-    message: 'example_profile subtree added/updated from http://git.drupal.org/project/example_profile.git'
-  my_module:
-    path: docroot/sites/all/modules/contrib/my_module
-    uri: 'http://git.drupal.org/project/my_module.git'
-    branch: 7.x-1.x
-    squash: TRUE
-    message: 'my_module subtree added/updated from http://git.drupal.org/project/my_module.git'
-
-# prebuild-commands:
-# - 'TODO add example here'
+prebuild-commands:
+# - 'shell command 1 goes here'
+# - 'shell command 2 goes here'
 
 # Custom commands. These are run after subtrees are updated and after the drush make
 # rebuild runs, before any changes from drush make are committed.
@@ -60,3 +22,7 @@ postbuild-commands:
   # If your site includes libraries installed by composer (e.g. composer_autoload
   # or guzzle module) you'll want to include something like this:
   # - 'cd docroot/sites/all/modules/guzzle; composer install;
+
+# Custom properties supported by other Drush extensions (e.g. Drush Subtree) can
+# go here.
+

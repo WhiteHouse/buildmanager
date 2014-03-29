@@ -99,12 +99,10 @@ You can use Build Manager with any build file, and configure it to use and Drush
 Make files you want BUT here are a few recommendations to keep things easy and
 straight forward working with Build Manager:
 
-  - Use the --no-recursion flag. Explicitly include all make files for your build
-    in build.make, or make sure the files included in build.make are directly including make
-    files. Detecting new make files at runtime and then pulling in new
-    dependencies
-  - If you're including multiple make files, all properties need keys. (See
-    below.)
+  - Your toplevel build file (and any make files it includes) should be stored outside
+    your Drupal code base.
+  - If you're build file has multiple includes, all included make files need keys. (See
+    example below.)
 
 #### Example: Including multiple files (all properties need keys)
 
