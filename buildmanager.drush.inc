@@ -212,25 +212,31 @@ function drush_buildmanager_build($config_file = '') {
     $commands->postbuild[] = _buildmanager_commit($message);
   }
 
-
   // Invoke buildmanager_build. Give other modules/extensions an opportunity to
   // examine $info and $config and add or modify $commands.
   drush_command_invoke_all('buildmanager_build', $info, $config, $commands);
 
-  // Execute prebuild commands.
-  foreach ($commands->prebuild as $command) {
-    // @todo Add error handling.
-    drush_shell_exec($command);
-  }
 
   // Build. (Run drush make.)
   $options = implode(' ', $config['build']['options']);
   $build_command = DRUSH_COMMAND . " make {$build_file} {$target} {$options}";
   drush_shell_exec($build_command);
 
-  // Execute postbuild  commands.
-  foreach ($commands->postbuild as $command) {
-    drush_shell_exec($command);
+  // Reorganize as one big array of commands. Then we'll run them in order:
+  // Prebuild, build, postbuild.
+  $commands = array_merge(
+    $commands->prebuild,
+    array($build_command),
+    $commands->postbuild
+  );
+
+  // Execute.
+  foreach ($commands as $command) {
+    $success = drush_shell_exec($command);
+    if (!$success) {
+      // Command failed. Notify user and exit.
+      return drush_set_error(dt('Command failed: !command', array('!command' => $command)));
+    }
   }
 
 }
