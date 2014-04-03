@@ -220,7 +220,6 @@ function drush_buildmanager_build($config_file = '') {
   // Build. (Run drush make.)
   $options = implode(' ', $config['build']['options']);
   $build_command = DRUSH_COMMAND . " make {$build_file} {$target} {$options}";
-  drush_shell_exec($build_command);
 
   // Reorganize as one big array of commands. Then we'll run them in order:
   // Prebuild, build, postbuild.
