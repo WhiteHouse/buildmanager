@@ -234,7 +234,9 @@ function drush_buildmanager_build($config_file = '') {
     $success = drush_shell_exec($command);
     if (!$success) {
       // Command failed. Notify user and exit.
-      return drush_set_error(dt('Command failed: !command', array('!command' => $command)));
+      drush_log(dt('Command failed: !command', array('!command' => $command)), 'error');
+      $output = implode("\n", drush_shell_exec_output());
+      return drush_set_error($output);
     }
   }
 
