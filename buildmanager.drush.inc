@@ -508,6 +508,25 @@ function buildmanager_get_project_info($subtree_name, $config) {
 }
 
 /**
+ * Get Drupal core version.
+ *
+ * @param array $config
+ *   Config from buildmanager.config.yml
+ *
+ * @return array
+ *   Info from make file(s).
+ */
+function buildmanager_get_core_version($config) {
+  $build_file = $config['build']['build_file'];
+  $info = _buildmanager_get_info($build_file);
+  if (!isset($info['core'])) {
+    drush_set_error('buildmanager', dt('Sorry. No core version specified: !here',
+      array('!here' => $build_file)));
+  }
+  return $info['core'];
+}
+
+/**
  * Prompt user to for symlinks. Generate postbuild symlink commands.
  *
  * @return array
