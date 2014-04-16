@@ -83,6 +83,7 @@ files](#tips-for-working-with-make-files).
    - hook_buildmanager_configure($config), insert yourself into the
      `buildmanager-configure` interactive prompt, return altered $config to be
      stored in buildmanager.config.yml
+   - hook_buildmanager_parse_error_output($output)
  
  @todo buildmanager.api.php
 

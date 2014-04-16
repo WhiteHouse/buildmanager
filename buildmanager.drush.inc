@@ -169,6 +169,10 @@ function drush_buildmanager_build($config_file = '') {
   $commands->prebuild = array();
   $commands->postbuild = array();
 
+  // Get HEAD commit, so we can help users get untangled if the build fails.
+  exec('git rev-parse HEAD', $output, $exit_code);
+  $head = $output[0];
+
   // Get config file.
   if (!$config_file) {
     $config_file = buildmanager_get_config_file();
@@ -235,8 +239,13 @@ function drush_buildmanager_build($config_file = '') {
     if (!$success) {
       // Command failed. Notify user and exit.
       drush_log(dt('Command failed: !command', array('!command' => $command)), 'error');
-      $output = implode("\n", drush_shell_exec_output());
-      return drush_set_error($output);
+      $output = drush_shell_exec_output();
+      drush_log(implode("\n", $output), 'error');
+      // Give other Drush extensions an opportunity to handle error message.
+      drush_command_invoke_all('buildmanager_parse_error_output', $output);
+      $error_message = dt('Review error message from shell command above to see why this build did not complete successfully. To reset repo to the state it was in before begnning this build you can do this: !fix',
+        array('!fix' => "\n\tgit reset --hard {$head}"));
+      return drush_set_error($error_message);
     }
   }
 
