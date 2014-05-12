@@ -125,8 +125,8 @@ function drush_buildmanager_configure() {
   // Options.
   drush_print(dt("Enter comma separated options to be passed to drush make."));
   $prompt = dt('options');
-  $required = TRUE;
   $default = '';
+  $required = FALSE;
   $options = drush_prompt($prompt, $default, $required);
   $config['build']['options'] = explode(',', $options);
 
