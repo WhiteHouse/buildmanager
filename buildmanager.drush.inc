@@ -199,13 +199,17 @@ function drush_buildmanager_build($config_file = '') {
   }
 
   // Add custom prebuild commands from config file.
-  foreach ($config['prebuild-commands'] as $command) {
-    $commands->prebuild[] = $command;
+  if (isset($config['prebuild-commands'])) {
+    foreach ($config['prebuild-commands'] as $command) {
+      $commands->prebuild[] = $command;
+    }
   }
 
   // Add custom postbuild commands from config file.
-  foreach ($config['postbuild-commands'] as $command) {
-    $commands->postbuild[] = $command;
+  if (isset($config['postbuild-commands'])) {
+    foreach ($config['postbuild-commands'] as $command) {
+      $commands->postbuild[] = $command;
+    }
   }
 
   // Add buildmanager's postbuild commands. Add after custom commands, so our
