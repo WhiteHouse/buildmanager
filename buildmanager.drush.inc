@@ -224,9 +224,8 @@ function drush_buildmanager_build($config_file = '') {
   // examine $info and $config and add or modify $commands.
   drush_command_invoke_all('buildmanager_build', $info, $config, $commands);
 
-
   // Build. (Run drush make.)
-  $options = implode(' ', $config['build']['options']);
+  $options = isset($options) ? implode(' ', $config['build']['options']) : '';
   $build_command = DRUSH_COMMAND . " make {$build_file} {$target} {$options}";
 
   // Reorganize as one big array of commands. Then we'll run them in order:
