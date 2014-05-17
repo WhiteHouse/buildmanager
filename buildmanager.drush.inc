@@ -127,8 +127,9 @@ function drush_buildmanager_configure() {
   $prompt = dt('options');
   $default = '';
   $required = FALSE;
-  $options = drush_prompt($prompt, $default, $required);
-  $config['build']['options'] = explode(',', $options);
+  if ($options = drush_prompt($prompt, $default, $required)) {
+    $config['build']['options'] = explode(',', $options);
+  }
 
   // Enable other Drush extensions to hook in and add config.
   $config = drush_command_invoke_all('buildmanager_configure', $config);
