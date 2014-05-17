@@ -240,15 +240,28 @@ function drush_buildmanager_build($config_file = '') {
   foreach ($commands as $command) {
     $success = drush_shell_exec($command);
     if (!$success) {
-      // Command failed. Notify user and exit.
+
+      // Command failed. Notify user and with suggested next steps.
       drush_log(dt('Command failed: !command', array('!command' => $command)), 'error');
       $output = drush_shell_exec_output();
       drush_log(implode("\n", $output), 'error');
+      $reset_command = "git reset --hard {$head}";
+      $error_message = dt('Review error message from shell command above to see why this build did not complete successfully. To reset repo to the state it was in before begnning this build you can do this: !fix',
+        array('!fix' => "\n\t{$reset_command}"));
+      drush_log($error_message, 'error');
+
       // Give other Drush extensions an opportunity to handle error message.
       drush_command_invoke_all('buildmanager_parse_error_output', $output);
-      $error_message = dt('Review error message from shell command above to see why this build did not complete successfully. To reset repo to the state it was in before begnning this build you can do this: !fix',
-        array('!fix' => "\n\tgit reset --hard {$head}"));
-      return drush_set_error($error_message);
+
+      // Offer to reset repo for user.
+      if (drush_confirm(dt("Do a hard reset to undo Build Manager's changes?"))) {
+        drush_shell_exec($reset_command);
+        $output = drush_shell_exec_output();
+        drush_log(implode("\n", $output), 'notice');
+      }
+
+      // Exit.
+      return;
     }
   }
 
