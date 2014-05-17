@@ -507,7 +507,7 @@ function _buildmanager_commit($message) {
     return '';
   }
   // Add any new files added to the repo.
-  $command = "git add . ; git commit -am '{$message}' --no-verify;";
+  $command = "git add --all; git commit -am '{$message}' --no-verify;";
   return $command;
 }
 
