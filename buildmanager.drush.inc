@@ -514,7 +514,7 @@ function _buildmanager_commit($message) {
 /**
  * Get info for a particular project from make file(s).
  *
- * @param string $subtree_name.
+ * @param string $name
  *   Name of project/subtree.
  *
  * @param array $config
@@ -523,14 +523,14 @@ function _buildmanager_commit($message) {
  * @return array
  *   Info from make file(s).
  */
-function buildmanager_get_project_info($subtree_name, $config) {
+function buildmanager_get_project_info($name, $config) {
   $build_file = $config['build']['build_file'];
   $info = _buildmanager_get_info($build_file);
-  if (!isset($info['projects'][$subtree_name])) {
+  if (!isset($info['projects'][$name])) {
     drush_set_error('buildmanager', dt('Sorry. No info available in make file(s) for project: !name',
-      array('!name' => $subtree_name)));
+      array('!name' => $name)));
   }
-  return $info['projects'][$subtree_name];
+  return $info['projects'][$name];
 }
 
 /**
