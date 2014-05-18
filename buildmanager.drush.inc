@@ -320,7 +320,8 @@ function buildmanager_is_toplevel($path = '') {
     return TRUE;  
   }
   else {
-    return drush_set_error(dt('This command must be run from the toplevel directory in the repository.'));
+    return drush_set_error(dt('This command must be run from the toplevel directory in the repository. Change directories, then try again: !cd',
+      array('!cd' => "\n\tcd {$toplevel}")));
   }
 }
 
