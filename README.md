@@ -75,7 +75,8 @@ files](#tips-for-working-with-make-files).
  projects (see working examples for all of these in Drush Subtree):
 
    - hook_buildmanager_build($make_info, $build_config, $commands), alter
-     $commands object to add prebuild and postbuild commands
+     $commands object to add prebuild and postbuild commands. Returning anything
+     aborts build.
    - hook_buildmanager_build_options(), return addtional options to include in
      buildmanager-build (implement this if your implementation of
      hook_buildmanager_build uses options not already provided by

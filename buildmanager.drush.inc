@@ -222,8 +222,11 @@ function drush_buildmanager_build($config_file = '') {
   }
 
   // Invoke buildmanager_build. Give other modules/extensions an opportunity to
-  // examine $info and $config and add or modify $commands.
-  drush_command_invoke_all('buildmanager_build', $info, $config, $commands);
+  // examine $info and $config, add or modify $commands, or abort.
+  $abort = drush_command_invoke_all('buildmanager_build', $info, $config, $commands);
+  if ($abort) {
+    return drush_set_error(dt('Build Manager: Aborting build.'));
+  }
 
   // Build. (Run drush make.)
   $options = isset($options) ? implode(' ', $config['build']['options']) : '';
