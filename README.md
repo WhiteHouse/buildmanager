@@ -4,13 +4,13 @@ Build Manager
 Overview
 ---------
 
-Build Manager provides a wrapper around Drush's make command to simplify
-builds for people who maintain distros or custom sites with drush make. Here's
+Build Manager provides a wrapper around Drush's Make command to simplify
+builds for people who maintain distros or custom sites with Drush Make. Here's
 how it simplifies things:
 
   - Provides an interactive prompt for setting up your Build Manager
     configuration. Once it's set up, Build Manager can automate your entire
-    build.
+    Drush Make build.
 
   - Enables site maintainers to specify custom prebuild and postbuild commands to be
     run before and after `drush make`.
@@ -23,7 +23,7 @@ how it simplifies things:
 Dependencies
 ------------
 
-  - (Recommended) Drush master / 7.x (Build Manager uses the Drush Make
+  - Drush master / 7.x (Build Manager uses the Drush Make
     --no-recursion flag and autoloading which--as of the time of this
     writing--have not been backported to 6.x)
 
@@ -51,49 +51,48 @@ Subtree](https://github.com/whitehouse/drushsubtree) to incorporate git subtrees
 into your site's make build, see the section below [Tips for working with make
 files](#tips-for-working-with-make-files).
 
-### Manual configuration
 
-  1. Set up a build.make file at the top-level of your repository. Drush make
-     will use this to set up your site.
+### Manual setup
+
+  1. Set up a build.make file at the top-level of your repository. Drush Make
+     will use this to (re)build your code base.
 
   1. Set up config for your own site build in buildmanager.example.yml,
-     following one of the exampe config files provided. This includes: 
+     following one of the exampe config files included with Build Manager.
 
-  1. Do this:
+### (Re)Build!
+
+Do this:
       
         cd /path/to/my-site-repo
         drush buildmanager-build --message="Update example distro to 7.x-1.3 with drush subtree"
           
         # If you have multiple config files, you can skip the prompt and specify
         # which config to use like this:
-        drush bmb ./drushsubtree.mysite.yml --message="Update example distro to 7.x-1.3 with drush subtree" -v
+        drush bmb drushsubtree.mysite.yml --message="Update example distro to 7.x-1.3 with drush subtree" -v
 
 
 ### Developers
 
  Implement the following hooks to extend Build Manger with your own Drush
- projects (see working examples for all of these in Drush Subtree):
+ projects (also see documentation in buildmanager.api.php and see working
+ examples for all of these in [Drush Subtree](https://github.com/whitehouse/drushsubtree)):
 
-   - hook_buildmanager_build($make_info, $build_config, $commands), alter
-     $commands object to add prebuild and postbuild commands. Returning anything
-     aborts build.
-   - hook_buildmanager_build_options(), return addtional options to include in
-     buildmanager-build (implement this if your implementation of
-     hook_buildmanager_build uses options not already provided by
-     buildmanager-build)
-   - hook_buildmanager_configure($config), insert yourself into the
-     `buildmanager-configure` interactive prompt, return altered $config to be
-     stored in buildmanager.config.yml
-   - hook_buildmanager_parse_error_output($output)
- 
- @todo buildmanager.api.php
+   - hook_buildmanager_build, add/update prebuild and postbuild commands or
+     abort build
+   - hook_buildmanager_build_options, return addtional options to include in
+     buildmanager-build 
+   - hook_buildmanager_configure, insert your extension into the
+     `buildmanager-configure` interactive prompt to generate additional config
+     to be stored in buildmanager.config.yml
+   - hook_buildmanager_parse_error_output, when commands fail, do something
 
 
 Tips for working with make files
 --------------------------------
 
 Build Manager is a simple wrapper around Drush Make for working with build
-files. A "build" file is drush make file that kicks off a drush make build for a
+files. A "build" file is drush make file that kicks off a Drush Make build for a
 Drupal site codebase. (Drupal distros on drupal.org usually include several make files.
 The build file is the one named: build-myprofile.make.)
 
