@@ -199,7 +199,7 @@ straight forward working with Build Manager:
 
 ### Example 3: Managing my instance of a distro I maintain with build.make
 
-Recommended: Do not next contrib projects inside (e.g. modules or themes) inside
+Recommended: Do not nest contrib projects inside (e.g. modules or themes) inside
 an install profile you maintain. It makes git workflows a lot more confusing and
 complicated. A better option is to (1) keep a copy the install profile outside
 docroot, then symlink it into docroot/profiles/example, and (2) to use the
