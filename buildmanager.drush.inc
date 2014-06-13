@@ -353,8 +353,6 @@ function drush_buildmanager_find_make_files() {
   foreach (buildmanager_find_make_files() as $file) {
     drush_print("{$file['basename']}\t\t{$file['filename']}");
   }
-
-  return $make_files;
 }
 
 /**
