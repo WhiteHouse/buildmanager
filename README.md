@@ -120,7 +120,7 @@ straight forward working with Build Manager:
 
   - Your toplevel build file (and any make files it includes) should be stored outside
     your Drupal code base.
-  - If you're build file has multiple includes, all included make files need keys. (See
+  - If your build file has multiple includes, all included make files need keys. (See
     example below.)
 
 ### Example 1: Managing my custom site with a build.make
@@ -153,8 +153,8 @@ straight forward working with Build Manager:
 
         ; Overrides
         ;
-        ; Override included make files and projects included by DKAN. Contrib projects
-        ; here are stored in sites/all/modules and sites/all/themes buy default.
+        ; Overrides include make files and projects included by DKAN. Contrib projects
+        ; are stored in sites/all/modules and sites/all/themes by default.
         ; ----------------------------------------------------------------------------
 
         ; Field Group
@@ -204,7 +204,7 @@ an install profile you maintain. It makes git workflows a lot more confusing and
 complicated. A better option is to (1) keep a copy the install profile outside
 docroot, then symlink it into docroot/profiles/example, and (2) to use the
 Drush 7's --no-recursion flag so Drush Make doesn't detect included make files
-and next projects inside projects, instead include all the make files you want
+and nest projects inside projects. Instead include all the make files you want
 to use in your build.make file.
 
         includes[base] = projects/example/build-example.make
