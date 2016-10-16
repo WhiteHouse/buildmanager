@@ -75,7 +75,7 @@ files](#tips-for-working-with-make-files).
      will use this to (re)build your code base.
 
   1. Set up config for your own site build in buildmanager.example.yml,
-     following one of the exampe config files included with Build Manager.
+     following one of the example config files included with Build Manager.
 
 
 ### (Re)Build
