@@ -98,7 +98,7 @@ Do this:
 
    - hook_buildmanager_build, add/update prebuild and postbuild commands or
      abort build
-   - hook_buildmanager_build_options, return addtional options to include in
+   - hook_buildmanager_build_options, return additional options to include in
      buildmanager-build 
    - hook_buildmanager_configure, insert your extension into the
      `buildmanager-configure` interactive prompt to generate additional config
