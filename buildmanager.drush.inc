@@ -250,7 +250,7 @@ function drush_buildmanager_build($config_file = '') {
       $output = drush_shell_exec_output();
       drush_log(implode("\n", $output), 'error');
       $reset_command = "git reset --hard {$head}";
-      $error_message = dt('Review error message from shell command above to see why this build did not complete successfully. To reset repo to the state it was in before begnning this build you can do this: !fix',
+      $error_message = dt('Review error message from shell command above to see why this build did not complete successfully. To reset repo to the state it was in before beginning this build you can do this: !fix',
         array('!fix' => "\n\t{$reset_command}"));
       drush_log($error_message, 'error');
 
